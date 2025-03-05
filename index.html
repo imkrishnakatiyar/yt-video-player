@@ -32,8 +32,8 @@
 </head>
 <body>
     <h2>Not On Spotify</h2>
-    <input type="text" id="videoUrl" placeholder="Enter YouTube video URL">
-    <button onclick="playAudio()">Play</button>
+    <input type="text" id="playlistUrl" placeholder="Enter YouTube Playlist URL">
+    <button onclick="playPlaylist()">Play Playlist</button>
     <button onclick="pauseAudio()">Pause</button>
     <br>
     <iframe id="videoFrame" frameborder="0" allow="autoplay"></iframe>
@@ -41,25 +41,22 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-            .then(reg => console.log('Service Worker registered!', reg))
-            .catch(err => console.log('Service Worker registration failed:', err));
-    });
-}
+            navigator.serviceWorker.register('service-worker.js').then(function() {
+                console.log('Service Worker Registered');
+            });
+        }
 
-
-        function playAudio() {
-            let url = document.getElementById("videoUrl").value;
-            let videoId = extractVideoID(url);
-            if (videoId) {
-                let embedUrl = "https://www.youtube.com/embed/" + videoId + "?autoplay=1&loop=1&controls=0&modestbranding=1";
+        function playPlaylist() {
+            let url = document.getElementById("playlistUrl").value;
+            let playlistId = extractPlaylistID(url);
+            if (playlistId) {
+                let embedUrl = "https://www.youtube.com/embed/videoseries?list=" + playlistId + "&autoplay=1&loop=1&controls=0&modestbranding=1";
                 document.getElementById("videoFrame").src = embedUrl;
                 document.getElementById("videoFrame").style.display = "block";
-                document.getElementById("audioPlayer").src = "https://www.youtube.com/embed/" + videoId;
+                document.getElementById("audioPlayer").src = embedUrl;
                 document.getElementById("audioPlayer").play();
             } else {
-                alert("Please enter a valid YouTube URL");
+                alert("Please enter a valid YouTube Playlist URL");
             }
         }
 
@@ -67,8 +64,8 @@
             document.getElementById("audioPlayer").pause();
         }
 
-        function extractVideoID(url) {
-            let regex = /(?:youtube\.com\/(?:[^\/]+\/.*|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/ ]{11})/;
+        function extractPlaylistID(url) {
+            let regex = /[?&]list=([^&#]+)/;
             let match = url.match(regex);
             return match ? match[1] : null;
         }
