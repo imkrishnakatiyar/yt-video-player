@@ -22,11 +22,12 @@
             margin: 5px;
         }
         iframe {
-            display: none;
-        }
-        audio {
+            width: 560px;
+            height: 315px;
             margin-top: 20px;
-            width: 100%;
+        }
+        .controls {
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -34,19 +35,31 @@
     <h2>Not On Spotify</h2>
     <input type="text" id="playlistUrl" placeholder="Enter YouTube Playlist URL">
     <button onclick="playPlaylist()">Play Playlist</button>
-    <button onclick="pauseAudio()">Pause</button>
-    <button onclick="prevTrack()">Previous</button>
-    <button onclick="nextTrack()">Next</button>
     <br>
-    <iframe id="videoFrame" frameborder="0" allow="autoplay"></iframe>
-    <audio id="audioPlayer" controls></audio>
-
+    <iframe id="videoFrame" frameborder="0" allow="autoplay" allowfullscreen></iframe>
+    
+    <div class="controls">
+        <button onclick="prevTrack()">⏮ Previous</button>
+        <button onclick="togglePlayPause()" id="playPauseButton">▶ Play</button>
+        <button onclick="nextTrack()">⏭ Next</button>
+        <br>
+        <input type="range" id="seekBar" min="0" max="100" value="0" step="1" onchange="seekAudio()">
+        <br>
+        <label>Volume: <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="1" onchange="changeVolume()"></label>
+        <br>
+        <button onclick="toggleShuffle()">🔀 Shuffle</button>
+        <button onclick="toggleRepeat()">🔁 Repeat</button>
+    </div>
+    
     <script>
-        let currentIndex = 0;
+        let isPlaying = false;
+        let isShuffle = false;
+        let isRepeat = false;
         let playlistVideos = [];
+        let currentIndex = 0;
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js').then(function() {
+            navigator.serviceWorker.register('service-worker.js').then(() => {
                 console.log('Service Worker Registered');
             });
         }
@@ -55,45 +68,63 @@
             let url = document.getElementById("playlistUrl").value;
             let playlistId = extractPlaylistID(url);
             if (playlistId) {
-                fetch(`https://www.youtube.com/playlist?list=${playlistId}`)
-                    .then(response => response.text())
-                    .then(data => {
-                        playlistVideos = extractVideoIds(data);
-                        currentIndex = 0;
-                        playCurrentVideo();
-                    });
+                let embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&loop=1`;
+                document.getElementById("videoFrame").src = embedUrl;
+                isPlaying = true;
+                updatePlayPauseButton();
             } else {
                 alert("Please enter a valid YouTube Playlist URL");
             }
         }
 
-        function playCurrentVideo() {
-            if (playlistVideos.length > 0) {
-                let videoId = playlistVideos[currentIndex];
-                let embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&controls=0&modestbranding=1`;
-                document.getElementById("videoFrame").src = embedUrl;
-                document.getElementById("videoFrame").style.display = "block";
-                document.getElementById("audioPlayer").src = embedUrl;
-                document.getElementById("audioPlayer").play();
+        function togglePlayPause() {
+            let iframe = document.getElementById("videoFrame");
+            if (isPlaying) {
+                iframe.src = "";
+                isPlaying = false;
+            } else {
+                playPlaylist();
+                isPlaying = true;
             }
+            updatePlayPauseButton();
+        }
+
+        function updatePlayPauseButton() {
+            document.getElementById("playPauseButton").innerText = isPlaying ? "⏸ Pause" : "▶ Play";
         }
 
         function nextTrack() {
-            if (currentIndex < playlistVideos.length - 1) {
-                currentIndex++;
-                playCurrentVideo();
+            if (isShuffle) {
+                currentIndex = Math.floor(Math.random() * playlistVideos.length);
+            } else {
+                currentIndex = (currentIndex + 1) % playlistVideos.length;
             }
+            playPlaylist();
         }
 
         function prevTrack() {
-            if (currentIndex > 0) {
-                currentIndex--;
-                playCurrentVideo();
-            }
+            currentIndex = (currentIndex - 1 + playlistVideos.length) % playlistVideos.length;
+            playPlaylist();
         }
 
-        function pauseAudio() {
-            document.getElementById("audioPlayer").pause();
+        function seekAudio() {
+            let seekValue = document.getElementById("seekBar").value;
+            console.log("Seeking to", seekValue);
+        }
+
+        function changeVolume() {
+            let volume = document.getElementById("volumeControl").value;
+            console.log("Volume changed to", volume);
+        }
+
+        function toggleShuffle() {
+            isShuffle = !isShuffle;
+            alert(`Shuffle: ${isShuffle ? "On" : "Off"}`);
+        }
+
+        function toggleRepeat() {
+            isRepeat = !isRepeat;
+            alert(`Repeat: ${isRepeat ? "On" : "Off"}`);
         }
 
         function extractPlaylistID(url) {
@@ -101,16 +132,8 @@
             let match = url.match(regex);
             return match ? match[1] : null;
         }
-
-        function extractVideoIds(html) {
-            let videoIds = [];
-            let regex = /"videoId":"(.*?)"/g;
-            let match;
-            while ((match = regex.exec(html)) !== null) {
-                videoIds.push(match[1]);
-            }
-            return videoIds;
-        }
     </script>
 </body>
 </html>
+
+              
