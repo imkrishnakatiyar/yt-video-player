@@ -49,12 +49,7 @@
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
 
 <script defer src="/_vercel/insights/script.js">
-     /*    if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js').then(() => {
-                console.log('Service Worker Registered');
-            });
-        } */
-        
+     
         document.addEventListener("DOMContentLoaded", () => {
             if (localStorage.getItem("darkMode") === "enabled") {
                 document.body.classList.add("dark-mode");
