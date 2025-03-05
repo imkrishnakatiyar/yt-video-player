@@ -10,6 +10,13 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin: 20px;
+            background-color: white;
+            color: black;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .dark-mode {
+            background-color: #181818;
+            color: white;
         }
         input {
             width: 60%;
@@ -33,6 +40,8 @@
 </head>
 <body>
     <h2>Not On Spotify</h2>
+    <button onclick="toggleDarkMode()">🌙 Toggle Dark Mode</button>
+    <br>
     <input type="text" id="playlistUrl" placeholder="Enter YouTube Playlist URL">
     <button onclick="playPlaylist()">Play Playlist</button>
     <br>
@@ -55,13 +64,16 @@
         let isPlaying = false;
         let isShuffle = false;
         let isRepeat = false;
-        let playlistVideos = [];
-        let currentIndex = 0;
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js').then(() => {
-                console.log('Service Worker Registered');
-            });
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            if (localStorage.getItem("darkMode") === "enabled") {
+                document.body.classList.add("dark-mode");
+            }
+        });
+        
+        function toggleDarkMode() {
+            document.body.classList.toggle("dark-mode");
+            localStorage.setItem("darkMode", document.body.classList.contains("dark-mode") ? "enabled" : "disabled");
         }
 
         function playPlaylist() {
@@ -93,40 +105,6 @@
             document.getElementById("playPauseButton").innerText = isPlaying ? "⏸ Pause" : "▶ Play";
         }
 
-        function nextTrack() {
-            if (isShuffle) {
-                currentIndex = Math.floor(Math.random() * playlistVideos.length);
-            } else {
-                currentIndex = (currentIndex + 1) % playlistVideos.length;
-            }
-            playPlaylist();
-        }
-
-        function prevTrack() {
-            currentIndex = (currentIndex - 1 + playlistVideos.length) % playlistVideos.length;
-            playPlaylist();
-        }
-
-        function seekAudio() {
-            let seekValue = document.getElementById("seekBar").value;
-            console.log("Seeking to", seekValue);
-        }
-
-        function changeVolume() {
-            let volume = document.getElementById("volumeControl").value;
-            console.log("Volume changed to", volume);
-        }
-
-        function toggleShuffle() {
-            isShuffle = !isShuffle;
-            alert(`Shuffle: ${isShuffle ? "On" : "Off"}`);
-        }
-
-        function toggleRepeat() {
-            isRepeat = !isRepeat;
-            alert(`Repeat: ${isRepeat ? "On" : "Off"}`);
-        }
-
         function extractPlaylistID(url) {
             let regex = /[?&]list=([^&#]+)/;
             let match = url.match(regex);
@@ -135,5 +113,3 @@
     </script>
 </body>
 </html>
-
-              
