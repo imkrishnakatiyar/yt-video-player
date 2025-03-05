@@ -1,6 +1,6 @@
 {
-    "name": "Not On Spotify",
-    "short_name": "NoS",
+    "name": "ListPlay",
+    "short_name": "Play",
     "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#ffffff",
