@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Not On Spotify</title>
+    <link rel="manifest" href="manifest.json">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -39,6 +40,12 @@
     <audio id="audioPlayer" controls></audio>
 
     <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').then(function() {
+                console.log('Service Worker Registered');
+            });
+        }
+
         function playAudio() {
             let url = document.getElementById("videoUrl").value;
             let videoId = extractVideoID(url);
