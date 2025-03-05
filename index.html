@@ -49,7 +49,12 @@
 <script defer src="/_vercel/insights/script.js"></script>
     
     <script>
-       
+         if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').then(() => {
+                console.log('Service Worker Registered');
+            });
+        } 
+        
         document.addEventListener("DOMContentLoaded", () => {
             if (localStorage.getItem("darkMode") === "enabled") {
                 document.body.classList.add("dark-mode");
