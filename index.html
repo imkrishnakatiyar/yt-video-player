@@ -18,6 +18,7 @@
         button {
             padding: 10px 15px;
             cursor: pointer;
+            margin: 5px;
         }
         iframe {
             display: none;
@@ -31,7 +32,8 @@
 <body>
     <h2>Not On Spotify</h2>
     <input type="text" id="videoUrl" placeholder="Enter YouTube video URL">
-    <button onclick="playAudio()">Play Audio</button>
+    <button onclick="playAudio()">Play</button>
+    <button onclick="pauseAudio()">Pause</button>
     <br>
     <iframe id="videoFrame" frameborder="0" allow="autoplay"></iframe>
     <audio id="audioPlayer" controls></audio>
@@ -45,9 +47,14 @@
                 document.getElementById("videoFrame").src = embedUrl;
                 document.getElementById("videoFrame").style.display = "block";
                 document.getElementById("audioPlayer").src = "https://www.youtube.com/embed/" + videoId;
+                document.getElementById("audioPlayer").play();
             } else {
                 alert("Please enter a valid YouTube URL");
             }
+        }
+
+        function pauseAudio() {
+            document.getElementById("audioPlayer").pause();
         }
 
         function extractVideoID(url) {
