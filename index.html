@@ -33,9 +33,6 @@
             height: 315px;
             margin-top: 20px;
         }
-        .controls {
-            margin-top: 10px;
-        }
     </style>
 </head>
 <body>
@@ -47,26 +44,7 @@
     <br>
     <iframe id="videoFrame" frameborder="0" allow="autoplay" allowfullscreen></iframe>
     
-    <div class="controls">
-        <button onclick="prevTrack()">⏮ Previous</button>
-        <button onclick="togglePlayPause()" id="playPauseButton">▶ Play</button>
-        <button onclick="nextTrack()">⏭ Next</button>
-        <br>
-        <input type="range" id="seekBar" min="0" max="100" value="0" step="1" onchange="seekAudio()">
-        <br>
-        <label>Volume: <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="1" onchange="changeVolume()"></label>
-        <br>
-        <button onclick="toggleShuffle()">🔀 Shuffle</button>
-        <button onclick="toggleRepeat()">🔁 Repeat</button>
-    </div>
-    
     <script>
-        let isPlaying = false;
-        let isShuffle = false;
-        let isRepeat = false;
-        let playlistVideos = [];
-        let currentIndex = 0;
-        
         document.addEventListener("DOMContentLoaded", () => {
             if (localStorage.getItem("darkMode") === "enabled") {
                 document.body.classList.add("dark-mode");
@@ -84,61 +62,9 @@
             if (playlistId) {
                 let embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&loop=1`;
                 document.getElementById("videoFrame").src = embedUrl;
-                isPlaying = true;
-                updatePlayPauseButton();
             } else {
                 alert("Please enter a valid YouTube Playlist URL");
             }
-        }
-
-        function togglePlayPause() {
-            let iframe = document.getElementById("videoFrame");
-            if (isPlaying) {
-                iframe.src = "";
-                isPlaying = false;
-            } else {
-                playPlaylist();
-                isPlaying = true;
-            }
-            updatePlayPauseButton();
-        }
-
-        function updatePlayPauseButton() {
-            document.getElementById("playPauseButton").innerText = isPlaying ? "⏸ Pause" : "▶ Play";
-        }
-
-        function prevTrack() {
-            if (playlistVideos.length > 0) {
-                currentIndex = (currentIndex - 1 + playlistVideos.length) % playlistVideos.length;
-                document.getElementById("videoFrame").src = playlistVideos[currentIndex];
-            }
-        }
-
-        function nextTrack() {
-            if (playlistVideos.length > 0) {
-                currentIndex = (currentIndex + 1) % playlistVideos.length;
-                document.getElementById("videoFrame").src = playlistVideos[currentIndex];
-            }
-        }
-
-        function changeVolume() {
-            let volume = document.getElementById("volumeControl").value;
-            console.log("Volume changed to", volume);
-        }
-
-        function seekAudio() {
-            let seekValue = document.getElementById("seekBar").value;
-            console.log("Seeking to", seekValue);
-        }
-
-        function toggleShuffle() {
-            isShuffle = !isShuffle;
-            alert(`Shuffle: ${isShuffle ? "On" : "Off"}`);
-        }
-
-        function toggleRepeat() {
-            isRepeat = !isRepeat;
-            alert(`Repeat: ${isRepeat ? "On" : "Off"}`);
         }
 
         function extractPlaylistID(url) {
