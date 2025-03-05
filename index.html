@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Video Player</title>
+    <title>Not On Spotify</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,25 +20,31 @@
             cursor: pointer;
         }
         iframe {
+            display: none;
+        }
+        audio {
             margin-top: 20px;
-            width: 560px;
-            height: 315px;
+            width: 100%;
         }
     </style>
 </head>
 <body>
-    <h2>YouTube Video Player</h2>
+    <h2>Not On Spotify</h2>
     <input type="text" id="videoUrl" placeholder="Enter YouTube video URL">
-    <button onclick="playVideo()">Play Video</button>
+    <button onclick="playAudio()">Play Audio</button>
     <br>
-    <iframe id="videoFrame" frameborder="0" allowfullscreen></iframe>
+    <iframe id="videoFrame" frameborder="0" allow="autoplay"></iframe>
+    <audio id="audioPlayer" controls></audio>
 
     <script>
-        function playVideo() {
+        function playAudio() {
             let url = document.getElementById("videoUrl").value;
             let videoId = extractVideoID(url);
             if (videoId) {
-                document.getElementById("videoFrame").src = "https://www.youtube.com/embed/" + videoId;
+                let embedUrl = "https://www.youtube.com/embed/" + videoId + "?autoplay=1&loop=1&controls=0&modestbranding=1";
+                document.getElementById("videoFrame").src = embedUrl;
+                document.getElementById("videoFrame").style.display = "block";
+                document.getElementById("audioPlayer").src = "https://www.youtube.com/embed/" + videoId;
             } else {
                 alert("Please enter a valid YouTube URL");
             }
