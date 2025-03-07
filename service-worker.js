@@ -1,6 +1,6 @@
 self.addEventListener('install', event => {
     event.waitUntil(
-        caches.open('not-on-spotify-cache').then(cache => {
+        caches.open('Orpheus-cache').then(cache => {
             return cache.addAll([
                 '/',
                 '/index.html',
