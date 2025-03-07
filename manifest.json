@@ -1,6 +1,6 @@
 {
-    "name": "ListPlay",
-    "short_name": "Play",
+    "name": "Orpheus",
+    "short_name": "Orpheus",
     "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#ffffff",
