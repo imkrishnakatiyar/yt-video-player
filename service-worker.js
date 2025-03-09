@@ -1,20 +1,34 @@
-self.addEventListener('install', event => {
+self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open('Orpheus-cache').then(cache => {
+        caches.open('orpheus-cache-v1').then((cache) => {
             return cache.addAll([
                 '/',
                 '/index.html',
                 '/manifest.json',
-                '/service-worker.js'
+                '/service-worker.js',
             ]);
         })
     );
 });
 
-self.addEventListener('fetch', event => {
+self.addEventListener('fetch', (event) => {
     event.respondWith(
-        caches.match(event.request).then(response => {
+        caches.match(event.request).then((response) => {
             return response || fetch(event.request);
+        })
+    );
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cache) => {
+                    if (cache !== 'orpheus-cache-v1') {
+                        return caches.delete(cache);
+                    }
+                })
+            );
         })
     );
 });
