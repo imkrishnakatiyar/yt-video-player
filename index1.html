@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orpheus</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: white;
+            color: black;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .dark-mode {
+            background-color: #181818;
+            color: white;
+        }
+        input {
+            width: 60%;
+            padding: 10px;
+            margin: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        iframe {
+            width: 560px;
+            height: 315px;
+            margin-top: 20px;
+        }
+        .results {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            justify-content: center;
+            padding: 20px;
+        }
+        .video {
+            background-color: #282828;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0px 0px 10px rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .video:hover {
+            transform: scale(1.05);
+        }
+        .video h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #58a6ff;
+        }
+    </style>
+</head>
+<body>
+    <h2>Orpheus</h2>
+    <button onclick="toggleDarkMode()">🌙 Toggle Dark Mode</button>
+    <br>
+    <input type="text" id="playlistUrl" placeholder="Enter YouTube Playlist URL">
+    <button onclick="playPlaylist()">Play Playlist</button>
+    <br>
+    <input type="text" id="searchQuery" placeholder="Search YouTube Playlists & Music Videos...">
+    <button onclick="searchYouTube(true)">Search</button>
+    <br>
+    <iframe id="videoFrame" frameborder="0" allow="autoplay" allowfullscreen></iframe>
+    <div class="results" id="results"></div>
+
+    <script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').then(() => {
+                console.log('Service Worker Registered');
+            });
+        } 
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            if (localStorage.getItem("darkMode") === "enabled") {
+                document.body.classList.add("dark-mode");
+            }
+        });
+        
+        function toggleDarkMode() {
+            document.body.classList.toggle("dark-mode");
+            localStorage.setItem("darkMode", document.body.classList.contains("dark-mode") ? "enabled" : "disabled");
+        }
+
+        function playPlaylist() {
+            let url = document.getElementById("playlistUrl").value;
+            let playlistId = extractPlaylistID(url);
+            if (playlistId) {
+                let embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&loop=1`;
+                document.getElementById("videoFrame").src = embedUrl;
+            } else {
+                alert("Please enter a valid YouTube Playlist URL");
+            }
+        }
+
+        function extractPlaylistID(url) {
+            let regex = /[?&]list=([^&#]+)/;
+            let match = url.match(regex);
+            return match ? match[1] : null;
+        }
+
+        const apiKey = 'AIzaSyAXk5vcoD3Wjs3fgJUNjFE2hFJMQx7pvNg'; // Replace with a valid API key
+        
+        async function searchYouTube(newSearch = false) {
+            if (newSearch) {
+                document.getElementById('results').innerHTML = '';
+                query = document.getElementById('searchQuery').value.trim();
+            }
+            if (!query) return;
+            
+            try {
+                const playlistUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=playlist&maxResults=5&key=${apiKey}`;
+                const videoUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=5&key=${apiKey}`;
+                
+                const [playlistResponse, videoResponse] = await Promise.all([
+                    fetch(playlistUrl),
+                    fetch(videoUrl)
+                ]);
+                
+                if (!playlistResponse.ok || !videoResponse.ok) {
+                    throw new Error('Failed to fetch YouTube data');
+                }
+                
+                const playlistData = await playlistResponse.json();
+                const videoData = await videoResponse.json();
+                
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = '';
+                
+                [...(playlistData.items || []), ...(videoData.items || [])].forEach(item => {
+                    let videoElement = document.createElement('div');
+                    videoElement.classList.add('video');
+                    let title = item.snippet.title;
+                    let thumbnail = item.snippet.thumbnails.high.url;
+                    
+                    if (item.id.playlistId) {
+                        const playlistId = item.id.playlistId;
+                        videoElement.innerHTML = `
+                            <h3>${title} (Playlist)</h3>
+                            <img src="${thumbnail}" width="100%" style="border-radius: 10px;" onclick="playPlaylistFromSearch('${playlistId}')">
+                        `;
+                    } else if (item.id.videoId) {
+                        const videoId = item.id.videoId;
+                        videoElement.innerHTML = `
+                            <h3>${title} (Music Video)</h3>
+                            <img src="${thumbnail}" width="100%" style="border-radius: 10px;" onclick="playVideo('${videoId}')">
+                        `;
+                    }
+                    
+                    resultsDiv.appendChild(videoElement);
+                });
+            } catch (error) {
+                console.error('Error fetching YouTube data:', error);
+            }
+        }
+        
+        function playPlaylistFromSearch(playlistId) {
+            document.getElementById('videoFrame').src = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1`;
+        }
+        
+        function playVideo(videoId) {
+            document.getElementById('videoFrame').src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        }
+    </script>
+</body>
+</html>
