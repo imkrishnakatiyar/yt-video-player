@@ -7,174 +7,237 @@
     <link rel="manifest" href="manifest.json">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 20px;
-            background-color: white;
-            color: black;
-            transition: background-color 0.3s, color 0.3s;
-        }
-        .dark-mode {
-            background-color: #181818;
+            font-family: 'Arial', sans-serif;
+            background-color: #121212;
             color: white;
+            margin: 0;
+            padding: 0;
         }
-        input {
-            width: 60%;
-            padding: 10px;
-            margin: 10px;
-        }
-        button {
-            padding: 10px 15px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        iframe {
-            width: 560px;
-            height: 315px;
-            margin-top: 20px;
-        }
-        .results {
-            margin-top: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            justify-content: center;
+
+        .container {
+            max-width: 90%;
+            margin: 20px auto;
             padding: 20px;
         }
-        .video {
-            background-color: #282828;
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
+
+        h1 {
+            text-align: left;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .search-bar {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        .search-bar button {
+            padding: 10px 15px;
+            background-color: #1db954;
+            border: none;
+            border-radius: 5px;
+            color: white;
             cursor: pointer;
-            box-shadow: 0px 0px 10px rgba(255, 255, 255, 0.1);
-            transition: transform 0.3s ease;
         }
-        .video:hover {
-            transform: scale(1.05);
+
+        .category {
+            margin-top: 30px;
         }
-        .video h3 {
-            font-size: 16px;
-            margin-bottom: 10px;
-            color: #58a6ff;
+
+        .category h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        .video-list {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .video {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+            text-align: center;
+            flex: 0 0 auto;
+            width: 300px;
+            cursor: pointer;
+        }
+
+        .video iframe {
+            width: 100%;
+            height: 180px;
+            border-radius: 8px;
+        }
+
+        /* Floating Draggable Video Player */
+        #floating-player {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 320px;
+            background: #000;
+            border-radius: 10px;
+            display: none;
+            cursor: grab;
+            z-index: 1000;
+        }
+
+        #floating-video {
+            width: 100%;
+            height: 180px;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
-    <h2>Orpheus</h2>
-    <button onclick="toggleDarkMode()">🌙 Toggle Dark Mode</button>
-    <br>
-    <input type="text" id="playlistUrl" placeholder="Enter YouTube Playlist URL">
-    <button onclick="playPlaylist()">Play Playlist</button>
-    <br>
-    <input type="text" id="searchQuery" placeholder="Search YouTube Playlists & Music Videos...">
-    <button onclick="searchYouTube(true)">Search</button>
-    <br>
-    <iframe id="videoFrame" frameborder="0" allow="autoplay" allowfullscreen></iframe>
-    <div class="results" id="results"></div>
 
-    <script>
+<div class="container">
+    <h1>Orpheus</h1>
+<a href="index1.html">old orpheus</a href>
+    <div class="search-bar">
+        <input type="text" id="search-query" placeholder="Search for music videos...">
+        <button onclick="searchYouTube()">Search</button>
+    </div>
+
+    <div id="search-results" class="category" style="display:none;">
+        <h2>Search Results</h2>
+        <div class="video-list"></div>
+    </div>
+
+    <div id="hindi-videos" class="category">
+        <h2>Trending Hindi Music</h2>
+        <div class="video-list"></div>
+    </div>
+
+    <div id="english-videos" class="category">
+        <h2>Trending English Music</h2>
+        <div class="video-list"></div>
+    </div>
+
+    <div id="punjabi-videos" class="category">
+        <h2>Trending Punjabi Music</h2>
+        <div class="video-list"></div>
+    </div>
+</div>
+
+<!-- Floating Draggable Video Player -->
+<div id="floating-player">
+    <iframe id="floating-video" allowfullscreen></iframe>
+</div>
+       <script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
     
-    <script>
-        if ('serviceWorker' in navigator) {
+
+<script>
+     if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js').then(() => {
                 console.log('Service Worker Registered');
             });
         } 
-        
-        document.addEventListener("DOMContentLoaded", () => {
-            if (localStorage.getItem("darkMode") === "enabled") {
-                document.body.classList.add("dark-mode");
-            }
-        });
-        
-        function toggleDarkMode() {
-            document.body.classList.toggle("dark-mode");
-            localStorage.setItem("darkMode", document.body.classList.contains("dark-mode") ? "enabled" : "disabled");
-        }
+    const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
+    
+    const playlists = {
+        "hindi-videos": "PL4uUU2x5ZgR1JOlcY9SZB94MW6fBE8ovU",
+        "english-videos": "PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG",
+        "punjabi-videos": "PLFFyMei_d85U5RQdXjRQ5F012qr4vSmSa"
+    };
 
-        function playPlaylist() {
-            let url = document.getElementById("playlistUrl").value;
-            let playlistId = extractPlaylistID(url);
-            if (playlistId) {
-                let embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&loop=1`;
-                document.getElementById("videoFrame").src = embedUrl;
-            } else {
-                alert("Please enter a valid YouTube Playlist URL");
-            }
-        }
-
-        function extractPlaylistID(url) {
-            let regex = /[?&]list=([^&#]+)/;
-            let match = url.match(regex);
-            return match ? match[1] : null;
-        }
-
-        const apiKey = 'AIzaSyAXk5vcoD3Wjs3fgJUNjFE2hFJMQx7pvNg'; // Replace with a valid API key
+    function fetchPlaylistVideos(playlistId, containerId) {
+        const API_URL = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=10&key=${API_KEY}`;
         
-        async function searchYouTube(newSearch = false) {
-            if (newSearch) {
-                document.getElementById('results').innerHTML = '';
-                query = document.getElementById('searchQuery').value.trim();
-            }
-            if (!query) return;
-            
-            try {
-                const playlistUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=playlist&maxResults=5&key=${apiKey}`;
-                const videoUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=5&key=${apiKey}`;
-                
-                const [playlistResponse, videoResponse] = await Promise.all([
-                    fetch(playlistUrl),
-                    fetch(videoUrl)
-                ]);
-                
-                if (!playlistResponse.ok || !videoResponse.ok) {
-                    throw new Error('Failed to fetch YouTube data');
-                }
-                
-                const playlistData = await playlistResponse.json();
-                const videoData = await videoResponse.json();
-                
-                const resultsDiv = document.getElementById('results');
-                resultsDiv.innerHTML = '';
-                
-                [...(playlistData.items || []), ...(videoData.items || [])].forEach(item => {
-                    let videoElement = document.createElement('div');
-                    videoElement.classList.add('video');
-                    let title = item.snippet.title;
-                    let thumbnail = item.snippet.thumbnails.high.url;
-                    
-                    if (item.id.playlistId) {
-                        const playlistId = item.id.playlistId;
-                        videoElement.innerHTML = `
-                            <h3>${title} (Playlist)</h3>
-                            <img src="${thumbnail}" width="100%" style="border-radius: 10px;" onclick="playPlaylistFromSearch('${playlistId}')">
-                        `;
-                    } else if (item.id.videoId) {
-                        const videoId = item.id.videoId;
-                        videoElement.innerHTML = `
-                            <h3>${title} (Music Video)</h3>
-                            <img src="${thumbnail}" width="100%" style="border-radius: 10px;" onclick="playVideo('${videoId}')">
-                        `;
-                    }
-                    
-                    resultsDiv.appendChild(videoElement);
+        fetch(API_URL)
+            .then(response => response.json())
+            .then(data => {
+                const videoList = document.querySelector(`#${containerId} .video-list`);
+                videoList.innerHTML = "";
+                data.items.forEach(video => {
+                    const videoId = video.snippet.resourceId.videoId;
+                    const videoElement = document.createElement("div");
+                    videoElement.classList.add("video");
+                    videoElement.innerHTML = `
+                        <h3>${video.snippet.title}</h3>
+                        <iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>
+                    `;
+                    videoElement.onclick = () => openFloatingPlayer(videoId);
+                    videoList.appendChild(videoElement);
                 });
-            } catch (error) {
-                console.error('Error fetching YouTube data:', error);
-            }
-        }
+            })
+            .catch(error => console.error(`Error fetching videos:`, error));
+    }
+
+    function searchYouTube() {
+        const query = document.getElementById("search-query").value;
+        if (!query) return;
+
+        const API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${API_KEY}`;
         
-        function playPlaylistFromSearch(playlistId) {
-            document.getElementById('videoFrame').src = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1`;
-        }
-        
-        function playVideo(videoId) {
-            document.getElementById('videoFrame').src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-        }
-    </script>
+        fetch(API_URL)
+            .then(response => response.json())
+            .then(data => {
+                const videoList = document.querySelector("#search-results .video-list");
+                videoList.innerHTML = "";
+                document.getElementById("search-results").style.display = "block";
+
+                data.items.forEach(video => {
+                    const videoId = video.id.videoId;
+                    const videoElement = document.createElement("div");
+                    videoElement.classList.add("video");
+                    videoElement.innerHTML = `
+                        <h3>${video.snippet.title}</h3>
+                        <iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>
+                    `;
+                    videoElement.onclick = () => openFloatingPlayer(videoId);
+                    videoList.appendChild(videoElement);
+                });
+            })
+            .catch(error => console.error("Error fetching search results:", error));
+    }
+
+    function openFloatingPlayer(videoId) {
+        document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoId}`;
+        document.getElementById("floating-player").style.display = "block";
+    }
+
+    // Draggable Floating Player
+    const floatingPlayer = document.getElementById("floating-player");
+    let isDragging = false, offsetX, offsetY;
+
+    floatingPlayer.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        offsetX = e.clientX - floatingPlayer.getBoundingClientRect().left;
+        offsetY = e.clientY - floatingPlayer.getBoundingClientRect().top;
+        floatingPlayer.style.cursor = "grabbing";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        floatingPlayer.style.left = `${e.clientX - offsetX}px`;
+        floatingPlayer.style.top = `${e.clientY - offsetY}px`;
+    });
+
+    document.addEventListener("mouseup", () => {
+        isDragging = false;
+        floatingPlayer.style.cursor = "grab";
+    });
+
+    Object.keys(playlists).forEach(containerId => {
+        fetchPlaylistVideos(playlists[containerId], containerId);
+    });
+</script>
+
 </body>
 </html>
