@@ -99,13 +99,28 @@
             height: 180px;
             border-radius: 10px;
         }
+
+        #close-player {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            z-index: 1001;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Orpheus</h1>
-<a href="index1.html">old orpheus</a href>
+    <a href="index1.html">old orpheus</a>
+
     <div class="search-bar">
         <input type="text" id="search-query" placeholder="Search for music videos...">
         <button onclick="searchYouTube()">Search</button>
@@ -113,6 +128,11 @@
 
     <div id="search-results" class="category" style="display:none;">
         <h2>Search Results</h2>
+        <div class="video-list"></div>
+    </div>
+
+    <div id="history-videos" class="category">
+        <h2>Recently Played</h2>
         <div class="video-list"></div>
     </div>
 
@@ -134,20 +154,22 @@
 
 <!-- Floating Draggable Video Player -->
 <div id="floating-player">
+    <button id="close-player">×</button>
     <iframe id="floating-video" allowfullscreen></iframe>
 </div>
-       <script>
+
+<script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
-    
 
 <script>
-     if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js').then(() => {
-                console.log('Service Worker Registered');
-            });
-        } 
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js').then(() => {
+            console.log('Service Worker Registered');
+        });
+    }
+    
     const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
     
     const playlists = {
@@ -155,6 +177,27 @@
         "english-videos": "PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG",
         "punjabi-videos": "PLFFyMei_d85U5RQdXjRQ5F012qr4vSmSa"
     };
+
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', function() {
+        displayPlaybackHistory();
+        Object.keys(playlists).forEach(containerId => {
+            fetchPlaylistVideos(playlists[containerId], containerId);
+        });
+        
+        // Add Enter key support for search
+        document.getElementById("search-query").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                searchYouTube();
+            }
+        });
+        
+        // Close player button
+        document.getElementById("close-player").addEventListener("click", function() {
+            document.getElementById("floating-player").style.display = "none";
+            document.getElementById("floating-video").src = "";
+        });
+    });
 
     function fetchPlaylistVideos(playlistId, containerId) {
         const API_URL = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=10&key=${API_KEY}`;
@@ -172,7 +215,7 @@
                         <h3>${video.snippet.title}</h3>
                         <iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>
                     `;
-                    videoElement.onclick = () => openFloatingPlayer(videoId);
+                    videoElement.onclick = () => openFloatingPlayer(videoId, video.snippet.title);
                     videoList.appendChild(videoElement);
                 });
             })
@@ -200,16 +243,65 @@
                         <h3>${video.snippet.title}</h3>
                         <iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>
                     `;
-                    videoElement.onclick = () => openFloatingPlayer(videoId);
+                    videoElement.onclick = () => openFloatingPlayer(videoId, video.snippet.title);
                     videoList.appendChild(videoElement);
                 });
             })
             .catch(error => console.error("Error fetching search results:", error));
     }
 
-    function openFloatingPlayer(videoId) {
+    function openFloatingPlayer(videoId, videoTitle) {
+        // Save to playback history
+        saveToPlaybackHistory(videoId, videoTitle);
+        
+        // Show player
         document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoId}`;
         document.getElementById("floating-player").style.display = "block";
+    }
+
+    // Save a video to playback history
+    function saveToPlaybackHistory(videoId, title) {
+        const history = getPlaybackHistory();
+        
+        // Add new video to beginning of array
+        history.unshift({
+            id: videoId,
+            title: title,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Keep only the last 50 items
+        const limitedHistory = history.slice(0, 50);
+        
+        localStorage.setItem('playbackHistory', JSON.stringify(limitedHistory));
+        
+        // Update the displayed history
+        displayPlaybackHistory();
+    }
+
+    // Get all playback history
+    function getPlaybackHistory() {
+        const history = localStorage.getItem('playbackHistory');
+        return history ? JSON.parse(history) : [];
+    }
+
+    // Display playback history
+    function displayPlaybackHistory() {
+        const history = getPlaybackHistory();
+        const videoList = document.querySelector("#history-videos .video-list");
+        videoList.innerHTML = "";
+        
+        history.forEach(video => {
+            const videoElement = document.createElement("div");
+            videoElement.classList.add("video");
+            videoElement.innerHTML = `
+                <h3>${video.title}</h3>
+                <p><small>${new Date(video.timestamp).toLocaleString()}</small></p>
+                <iframe src="https://www.youtube.com/embed/${video.id}" allowfullscreen></iframe>
+            `;
+            videoElement.onclick = () => openFloatingPlayer(video.id, video.title);
+            videoList.appendChild(videoElement);
+        });
     }
 
     // Draggable Floating Player
@@ -232,10 +324,6 @@
     document.addEventListener("mouseup", () => {
         isDragging = false;
         floatingPlayer.style.cursor = "grab";
-    });
-
-    Object.keys(playlists).forEach(containerId => {
-        fetchPlaylistVideos(playlists[containerId], containerId);
     });
 </script>
 
