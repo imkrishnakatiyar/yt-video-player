@@ -81,6 +81,14 @@
             border-radius: 8px;
         }
 
+        .video-thumbnail {
+            width: 100%;
+            height: 180px;
+            border-radius: 8px;
+            object-fit: cover;
+            background-color: #333;
+        }
+
         /* Floating Draggable Video Player */
         #floating-player {
             position: fixed;
@@ -92,6 +100,7 @@
             display: none;
             cursor: grab;
             z-index: 1000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         #floating-video {
@@ -112,6 +121,18 @@
             height: 20px;
             cursor: pointer;
             z-index: 1001;
+            font-weight: bold;
+        }
+
+        .clear-history {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -132,7 +153,9 @@
     </div>
 
     <div id="history-videos" class="category">
-        <h2>Recently Played</h2>
+        <h2>Recently Played 
+            <button class="clear-history" onclick="clearPlaybackHistory()">Clear History</button>
+        </h2>
         <div class="video-list"></div>
     </div>
 
@@ -171,6 +194,7 @@
     }
     
     const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
+    const CACHE_NAME = 'orpheus-video-cache';
     
     const playlists = {
         "hindi-videos": "PL4uUU2x5ZgR1JOlcY9SZB94MW6fBE8ovU",
@@ -180,9 +204,11 @@
 
     // Initialize the page
     document.addEventListener('DOMContentLoaded', function() {
-        displayPlaybackHistory();
-        Object.keys(playlists).forEach(containerId => {
-            fetchPlaylistVideos(playlists[containerId], containerId);
+        initializeCache().then(() => {
+            displayPlaybackHistory();
+            Object.keys(playlists).forEach(containerId => {
+                fetchPlaylistVideos(playlists[containerId], containerId);
+            });
         });
         
         // Add Enter key support for search
@@ -199,6 +225,51 @@
         });
     });
 
+    // Initialize Cache API
+    async function initializeCache() {
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            console.log('Cache initialized');
+            return cache;
+        } catch (error) {
+            console.error('Cache initialization failed:', error);
+        }
+    }
+
+    // Cache video data
+    async function cacheVideoData(videoId, videoData) {
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            const url = `https://www.youtube.com/watch?v=${videoId}`;
+            const response = new Response(JSON.stringify(videoData), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+            await cache.put(url, response);
+            console.log('Video data cached:', videoId);
+        } catch (error) {
+            console.error('Failed to cache video data:', error);
+        }
+    }
+
+    // Get cached video data
+    async function getCachedVideoData(videoId) {
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            const url = `https://www.youtube.com/watch?v=${videoId}`;
+            const response = await cache.match(url);
+            
+            if (response) {
+                const data = await response.json();
+                console.log('Retrieved from cache:', videoId);
+                return data;
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to retrieve cached data:', error);
+            return null;
+        }
+    }
+
     function fetchPlaylistVideos(playlistId, containerId) {
         const API_URL = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=10&key=${API_KEY}`;
         
@@ -209,13 +280,21 @@
                 videoList.innerHTML = "";
                 data.items.forEach(video => {
                     const videoId = video.snippet.resourceId.videoId;
+                    const thumbnailUrl = video.snippet.thumbnails?.medium?.url || 
+                                      video.snippet.thumbnails?.default?.url ||
+                                      'https://i.ytimg.com/vi/default.jpg';
+                    
                     const videoElement = document.createElement("div");
                     videoElement.classList.add("video");
                     videoElement.innerHTML = `
                         <h3>${video.snippet.title}</h3>
-                        <iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>
+                        <img src="${thumbnailUrl}" class="video-thumbnail" alt="${video.snippet.title}">
                     `;
-                    videoElement.onclick = () => openFloatingPlayer(videoId, video.snippet.title);
+                    videoElement.onclick = () => openFloatingPlayer(
+                        videoId, 
+                        video.snippet.title,
+                        thumbnailUrl
+                    );
                     videoList.appendChild(videoElement);
                 });
             })
@@ -237,22 +316,40 @@
 
                 data.items.forEach(video => {
                     const videoId = video.id.videoId;
+                    const thumbnailUrl = video.snippet.thumbnails?.medium?.url || 
+                                      video.snippet.thumbnails?.default?.url ||
+                                      'https://i.ytimg.com/vi/default.jpg';
+                    
                     const videoElement = document.createElement("div");
                     videoElement.classList.add("video");
                     videoElement.innerHTML = `
                         <h3>${video.snippet.title}</h3>
-                        <iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>
+                        <img src="${thumbnailUrl}" class="video-thumbnail" alt="${video.snippet.title}">
                     `;
-                    videoElement.onclick = () => openFloatingPlayer(videoId, video.snippet.title);
+                    videoElement.onclick = () => openFloatingPlayer(
+                        videoId, 
+                        video.snippet.title,
+                        thumbnailUrl
+                    );
                     videoList.appendChild(videoElement);
                 });
             })
             .catch(error => console.error("Error fetching search results:", error));
     }
 
-    function openFloatingPlayer(videoId, videoTitle) {
-        // Save to playback history
-        saveToPlaybackHistory(videoId, videoTitle);
+    async function openFloatingPlayer(videoId, videoTitle, thumbnailUrl) {
+        // Prepare video data
+        const videoData = {
+            id: videoId,
+            title: videoTitle,
+            thumbnail: thumbnailUrl,
+            link: `https://www.youtube.com/watch?v=${videoId}`,
+            timestamp: new Date().toISOString()
+        };
+        
+        // Save to cache and history
+        await cacheVideoData(videoId, videoData);
+        saveToPlaybackHistory(videoData);
         
         // Show player
         document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoId}`;
@@ -260,15 +357,17 @@
     }
 
     // Save a video to playback history
-    function saveToPlaybackHistory(videoId, title) {
+    function saveToPlaybackHistory(videoData) {
         const history = getPlaybackHistory();
         
+        // Remove if already exists (to avoid duplicates)
+        const existingIndex = history.findIndex(v => v.id === videoData.id);
+        if (existingIndex >= 0) {
+            history.splice(existingIndex, 1);
+        }
+        
         // Add new video to beginning of array
-        history.unshift({
-            id: videoId,
-            title: title,
-            timestamp: new Date().toISOString()
-        });
+        history.unshift(videoData);
         
         // Keep only the last 50 items
         const limitedHistory = history.slice(0, 50);
@@ -285,23 +384,46 @@
         return history ? JSON.parse(history) : [];
     }
 
+    // Clear playback history
+    function clearPlaybackHistory() {
+        localStorage.removeItem('playbackHistory');
+        document.querySelector("#history-videos .video-list").innerHTML = "";
+    }
+
     // Display playback history
-    function displayPlaybackHistory() {
+    async function displayPlaybackHistory() {
         const history = getPlaybackHistory();
         const videoList = document.querySelector("#history-videos .video-list");
         videoList.innerHTML = "";
         
-        history.forEach(video => {
+        for (const video of history) {
+            // Try to get cached data if missing some fields
+            let videoData = video;
+            if (!video.thumbnail || !video.link) {
+                const cachedData = await getCachedVideoData(video.id);
+                if (cachedData) {
+                    videoData = { ...video, ...cachedData };
+                }
+            }
+            
             const videoElement = document.createElement("div");
             videoElement.classList.add("video");
             videoElement.innerHTML = `
-                <h3>${video.title}</h3>
-                <p><small>${new Date(video.timestamp).toLocaleString()}</small></p>
-                <iframe src="https://www.youtube.com/embed/${video.id}" allowfullscreen></iframe>
+                <h3>${videoData.title}</h3>
+                <p><small>${new Date(videoData.timestamp).toLocaleString()}</small></p>
+                <img src="${videoData.thumbnail}" class="video-thumbnail" alt="${videoData.title}">
             `;
-            videoElement.onclick = () => openFloatingPlayer(video.id, video.title);
+            videoElement.onclick = () => {
+                document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoData.id}`;
+                document.getElementById("floating-player").style.display = "block";
+                // Update timestamp
+                saveToPlaybackHistory({
+                    ...videoData,
+                    timestamp: new Date().toISOString()
+                });
+            };
             videoList.appendChild(videoElement);
-        });
+        }
     }
 
     // Draggable Floating Player
