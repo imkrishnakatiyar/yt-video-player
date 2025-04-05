@@ -134,6 +134,41 @@
             margin-left: 10px;
             font-size: 12px;
         }
+
+        /* New styles for channel recommendations */
+        .channels-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .channel-section {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .channel-section h3 {
+            margin-top: 0;
+            color: #1db954;
+        }
+
+        .channel-section h4 {
+            margin: 15px 0 10px;
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        .channel-videos .video-list {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .channel-videos .video {
+            width: 250px;
+        }
     </style>
 </head>
 <body>
@@ -145,6 +180,11 @@
     <div class="search-bar">
         <input type="text" id="search-query" placeholder="Search for music videos...">
         <button onclick="searchYouTube()">Search</button>
+    </div>
+
+    <div id="channel-recommendations" class="category" style="display:none;">
+        <h2>From Your Favorite Channels</h2>
+        <div class="channels-container"></div>
     </div>
 
     <div id="search-results" class="category" style="display:none;">
@@ -206,9 +246,15 @@
     document.addEventListener('DOMContentLoaded', function() {
         initializeCache().then(() => {
             displayPlaybackHistory();
-            Object.keys(playlists).forEach(containerId => {
-                fetchPlaylistVideos(playlists[containerId], containerId);
-            });
+            displayChannelRecommendations(); // Show channel recommendations
+            
+            // Only load generic playlists if no history exists
+            const history = getPlaybackHistory();
+            if (history.length === 0) {
+                Object.keys(playlists).forEach(containerId => {
+                    fetchPlaylistVideos(playlists[containerId], containerId);
+                });
+            }
         });
         
         // Add Enter key support for search
@@ -268,6 +314,178 @@
             console.error('Failed to retrieve cached data:', error);
             return null;
         }
+    }
+
+    // Get video details including channel info
+    async function getVideoDetails(videoId) {
+        const API_URL = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
+        
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            return {
+                channelId: data.items[0].snippet.channelId,
+                channelTitle: data.items[0].snippet.channelTitle
+            };
+        } catch (error) {
+            console.error('Error fetching video details:', error);
+            return { channelId: '', channelTitle: '' };
+        }
+    }
+
+    // Open floating player with video
+    async function openFloatingPlayer(videoId, videoTitle, thumbnailUrl) {
+        // First get more video details including channelId
+        const videoDetails = await getVideoDetails(videoId);
+        
+        const videoData = {
+            id: videoId,
+            title: videoTitle,
+            thumbnail: thumbnailUrl,
+            link: `https://www.youtube.com/watch?v=${videoId}`,
+            timestamp: new Date().toISOString(),
+            channelId: videoDetails.channelId,
+            channelTitle: videoDetails.channelTitle
+        };
+        
+        await cacheVideoData(videoId, videoData);
+        saveToPlaybackHistory(videoData);
+        
+        document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoId}`;
+        document.getElementById("floating-player").style.display = "block";
+        
+        // Update recommendations after watching a new video
+        displayChannelRecommendations();
+    }
+
+    // Get watched channels from history
+    function getWatchedChannels() {
+        const history = getPlaybackHistory();
+        const channels = {};
+        
+        history.forEach(video => {
+            if (video.channelId) {
+                if (!channels[video.channelId]) {
+                    channels[video.channelId] = {
+                        id: video.channelId,
+                        name: video.channelTitle || video.channelId,
+                        count: 1,
+                        lastWatched: video.timestamp
+                    };
+                } else {
+                    channels[video.channelId].count++;
+                    if (new Date(video.timestamp) > new Date(channels[video.channelId].lastWatched)) {
+                        channels[video.channelId].lastWatched = video.timestamp;
+                    }
+                }
+            }
+        });
+        
+        // Sort by most watched channels first
+        return Object.values(channels).sort((a, b) => b.count - a.count);
+    }
+
+    // Get videos from a channel
+    async function getChannelVideos(channelId, type = 'recent') {
+        let API_URL;
+        
+        if (type === 'recent') {
+            // Get most recent uploads
+            API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&maxResults=2&type=video&key=${API_KEY}`;
+        } else {
+            // Get most popular videos
+            API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=viewCount&maxResults=2&type=video&key=${API_KEY}`;
+        }
+        
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            return data.items;
+        } catch (error) {
+            console.error(`Error fetching ${type} channel videos:`, error);
+            return [];
+        }
+    }
+
+    // Display channel recommendations
+    async function displayChannelRecommendations() {
+        const watchedChannels = getWatchedChannels();
+        if (watchedChannels.length === 0) {
+            document.getElementById('channel-recommendations').style.display = 'none';
+            return;
+        }
+        
+        // Get top 3 most watched channels
+        const topChannels = watchedChannels.slice(0, 3);
+        
+        const channelsContainer = document.querySelector('#channel-recommendations .channels-container');
+        channelsContainer.innerHTML = '';
+        
+        // For each channel, show recent and popular videos
+        for (const channel of topChannels) {
+            const [recentVideos, popularVideos] = await Promise.all([
+                getChannelVideos(channel.id, 'recent'),
+                getChannelVideos(channel.id, 'popular')
+            ]);
+            
+            if (recentVideos.length === 0 && popularVideos.length === 0) continue;
+            
+            const channelElement = document.createElement('div');
+            channelElement.className = 'channel-section';
+            channelElement.innerHTML = `
+                <h3>${channel.name}</h3>
+                <div class="channel-videos">
+                    ${recentVideos.length > 0 ? '<h4>Recent Uploads</h4><div class="video-list recent-videos"></div>' : ''}
+                    ${popularVideos.length > 0 ? '<h4>Popular Videos</h4><div class="video-list popular-videos"></div>' : ''}
+                </div>
+            `;
+            
+            // Add recent videos
+            if (recentVideos.length > 0) {
+                const recentList = channelElement.querySelector('.recent-videos');
+                recentVideos.forEach(video => {
+                    const videoElement = createVideoElement(video);
+                    recentList.appendChild(videoElement);
+                });
+            }
+            
+            // Add popular videos
+            if (popularVideos.length > 0) {
+                const popularList = channelElement.querySelector('.popular-videos');
+                popularVideos.forEach(video => {
+                    const videoElement = createVideoElement(video);
+                    popularList.appendChild(videoElement);
+                });
+            }
+            
+            channelsContainer.appendChild(channelElement);
+        }
+        
+        // Show the section if we have content
+        if (channelsContainer.innerHTML.trim() !== '') {
+            document.getElementById('channel-recommendations').style.display = 'block';
+        }
+    }
+
+    // Helper function to create video elements
+    function createVideoElement(video) {
+        const videoId = video.id.videoId;
+        const thumbnailUrl = video.snippet.thumbnails?.medium?.url || 
+                          video.snippet.thumbnails?.default?.url ||
+                          'https://i.ytimg.com/vi/default.jpg';
+        
+        const videoElement = document.createElement("div");
+        videoElement.classList.add("video");
+        videoElement.innerHTML = `
+            <h3>${video.snippet.title}</h3>
+            <img src="${thumbnailUrl}" class="video-thumbnail" alt="${video.snippet.title}">
+        `;
+        videoElement.onclick = () => openFloatingPlayer(
+            videoId, 
+            video.snippet.title,
+            thumbnailUrl
+        );
+        return videoElement;
     }
 
     function fetchPlaylistVideos(playlistId, containerId) {
@@ -337,25 +555,6 @@
             .catch(error => console.error("Error fetching search results:", error));
     }
 
-    async function openFloatingPlayer(videoId, videoTitle, thumbnailUrl) {
-        // Prepare video data
-        const videoData = {
-            id: videoId,
-            title: videoTitle,
-            thumbnail: thumbnailUrl,
-            link: `https://www.youtube.com/watch?v=${videoId}`,
-            timestamp: new Date().toISOString()
-        };
-        
-        // Save to cache and history
-        await cacheVideoData(videoId, videoData);
-        saveToPlaybackHistory(videoData);
-        
-        // Show player
-        document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoId}`;
-        document.getElementById("floating-player").style.display = "block";
-    }
-
     // Save a video to playback history
     function saveToPlaybackHistory(videoData) {
         const history = getPlaybackHistory();
@@ -388,6 +587,7 @@
     function clearPlaybackHistory() {
         localStorage.removeItem('playbackHistory');
         document.querySelector("#history-videos .video-list").innerHTML = "";
+        document.getElementById('channel-recommendations').style.display = 'none';
     }
 
     // Display playback history
