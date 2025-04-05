@@ -402,7 +402,7 @@
             const videoResults = await Promise.all(
                 recommendations.map(rec => 
                     searchYouTubeForRecommendation(rec.search_query || rec.title)
-            );
+            ));
             
             // Add the recommendation reasons to the results
             return videoResults
