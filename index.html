@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orpheus - Personalized Music</title>
+    <title>Orpheus</title>
     <link rel="manifest" href="manifest.json">
     <style>
         body {
@@ -73,11 +73,12 @@
             flex: 0 0 auto;
             width: 300px;
             cursor: pointer;
-            transition: transform 0.2s;
         }
 
-        .video:hover {
-            transform: scale(1.03);
+        .video iframe {
+            width: 100%;
+            height: 180px;
+            border-radius: 8px;
         }
 
         .video-thumbnail {
@@ -133,54 +134,17 @@
             margin-left: 10px;
             font-size: 12px;
         }
-
-        .personalized-section {
-            margin-top: 30px;
-            background: rgba(30, 30, 30, 0.7);
-            padding: 20px;
-            border-radius: 10px;
-            border-left: 4px solid #1db954;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #1db954;
-            animation: spin 1s ease-in-out infinite;
-            margin-left: 10px;
-            vertical-align: middle;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .recommendation-reason {
-            font-size: 12px;
-            color: #aaa;
-            margin-top: 5px;
-            font-style: italic;
-        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Orpheus <span id="personalized-greeting"></span></h1>
+    <h1>Orpheus</h1>
     <a href="index1.html">old orpheus</a>
 
     <div class="search-bar">
         <input type="text" id="search-query" placeholder="Search for music videos...">
         <button onclick="searchYouTube()">Search</button>
-    </div>
-
-    <!-- Personalized Recommendations Section -->
-    <div id="personalized-recommendations" class="personalized-section" style="display:none;">
-        <h2>Recommended For You <span id="ai-loading" style="display:none;" class="loading"></span></h2>
-        <div class="video-list"></div>
     </div>
 
     <div id="search-results" class="category" style="display:none;">
@@ -195,7 +159,6 @@
         <div class="video-list"></div>
     </div>
 
-    <!-- Default categories -->
     <div id="hindi-videos" class="category">
         <h2>Trending Hindi Music</h2>
         <div class="video-list"></div>
@@ -219,13 +182,20 @@
 </div>
 
 <script>
-    // API Keys (In production, these should be handled via backend)
-    const YOUTUBE_API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
-    const DEEPSEEK_API_KEY = "sk-8c7d73d4fb414b4a88227ebfab5f3eb2"; // Replace with your actual key
-    const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js').then(() => {
+            console.log('Service Worker Registered');
+        });
+    }
     
-    // App State
+    const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
     const CACHE_NAME = 'orpheus-video-cache';
+    
     const playlists = {
         "hindi-videos": "PL4uUU2x5ZgR1JOlcY9SZB94MW6fBE8ovU",
         "english-videos": "PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG",
@@ -236,24 +206,16 @@
     document.addEventListener('DOMContentLoaded', function() {
         initializeCache().then(() => {
             displayPlaybackHistory();
-            
-            // Check if we have enough history for personalized recommendations
-            const history = getPlaybackHistory();
-            if (history.length > 2) {
-                generatePersonalizedRecommendations();
-            } else {
-                // Show default categories
-                Object.keys(playlists).forEach(containerId => {
-                    fetchPlaylistVideos(playlists[containerId], containerId);
-                });
-            }
-            
-            updatePersonalizedGreeting();
+            Object.keys(playlists).forEach(containerId => {
+                fetchPlaylistVideos(playlists[containerId], containerId);
+            });
         });
         
-        // Search on Enter key
+        // Add Enter key support for search
         document.getElementById("search-query").addEventListener("keyup", function(event) {
-            if (event.key === "Enter") searchYouTube();
+            if (event.key === "Enter") {
+                searchYouTube();
+            }
         });
         
         // Close player button
@@ -263,18 +225,18 @@
         });
     });
 
-    // =====================
-    // Caching Functions
-    // =====================
+    // Initialize Cache API
     async function initializeCache() {
         try {
             const cache = await caches.open(CACHE_NAME);
+            console.log('Cache initialized');
             return cache;
         } catch (error) {
             console.error('Cache initialization failed:', error);
         }
     }
 
+    // Cache video data
     async function cacheVideoData(videoId, videoData) {
         try {
             const cache = await caches.open(CACHE_NAME);
@@ -283,16 +245,33 @@
                 headers: { 'Content-Type': 'application/json' }
             });
             await cache.put(url, response);
+            console.log('Video data cached:', videoId);
         } catch (error) {
             console.error('Failed to cache video data:', error);
         }
     }
 
-    // =====================
-    // YouTube API Functions
-    // =====================
+    // Get cached video data
+    async function getCachedVideoData(videoId) {
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            const url = `https://www.youtube.com/watch?v=${videoId}`;
+            const response = await cache.match(url);
+            
+            if (response) {
+                const data = await response.json();
+                console.log('Retrieved from cache:', videoId);
+                return data;
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to retrieve cached data:', error);
+            return null;
+        }
+    }
+
     function fetchPlaylistVideos(playlistId, containerId) {
-        const API_URL = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=10&key=${YOUTUBE_API_KEY}`;
+        const API_URL = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=10&key=${API_KEY}`;
         
         fetch(API_URL)
             .then(response => response.json())
@@ -305,7 +284,18 @@
                                       video.snippet.thumbnails?.default?.url ||
                                       'https://i.ytimg.com/vi/default.jpg';
                     
-                    createVideoElement(videoList, videoId, video.snippet.title, thumbnailUrl);
+                    const videoElement = document.createElement("div");
+                    videoElement.classList.add("video");
+                    videoElement.innerHTML = `
+                        <h3>${video.snippet.title}</h3>
+                        <img src="${thumbnailUrl}" class="video-thumbnail" alt="${video.snippet.title}">
+                    `;
+                    videoElement.onclick = () => openFloatingPlayer(
+                        videoId, 
+                        video.snippet.title,
+                        thumbnailUrl
+                    );
+                    videoList.appendChild(videoElement);
                 });
             })
             .catch(error => console.error(`Error fetching videos:`, error));
@@ -315,7 +305,7 @@
         const query = document.getElementById("search-query").value;
         if (!query) return;
 
-        const API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
+        const API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${API_KEY}`;
         
         fetch(API_URL)
             .then(response => response.json())
@@ -330,242 +320,25 @@
                                       video.snippet.thumbnails?.default?.url ||
                                       'https://i.ytimg.com/vi/default.jpg';
                     
-                    createVideoElement(videoList, videoId, video.snippet.title, thumbnailUrl);
+                    const videoElement = document.createElement("div");
+                    videoElement.classList.add("video");
+                    videoElement.innerHTML = `
+                        <h3>${video.snippet.title}</h3>
+                        <img src="${thumbnailUrl}" class="video-thumbnail" alt="${video.snippet.title}">
+                    `;
+                    videoElement.onclick = () => openFloatingPlayer(
+                        videoId, 
+                        video.snippet.title,
+                        thumbnailUrl
+                    );
+                    videoList.appendChild(videoElement);
                 });
             })
             .catch(error => console.error("Error fetching search results:", error));
     }
 
-    async function searchYouTubeForRecommendation(query) {
-        try {
-            const API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1&key=${YOUTUBE_API_KEY}`;
-            const response = await fetch(API_URL);
-            const data = await response.json();
-            
-            if (data.items && data.items.length > 0) {
-                const video = data.items[0];
-                return {
-                    id: video.id.videoId,
-                    title: video.snippet.title,
-                    thumbnail: video.snippet.thumbnails?.medium?.url || 
-                             video.snippet.thumbnails?.default?.url ||
-                             'https://i.ytimg.com/vi/default.jpg',
-                    description: video.snippet.description
-                };
-            }
-            return null;
-        } catch (error) {
-            console.error("YouTube search failed:", error);
-            return null;
-        }
-    }
-
-    // =====================
-    // DeepSeek AI Functions
-    // =====================
-    async function getDeepSeekRecommendations(userProfile) {
-        try {
-            // Prepare the prompt
-            const prompt = `
-                Analyze this user's music video history and suggest 5 personalized YouTube music video recommendations.
-                Focus on their preferred genres: ${userProfile.genres.join(", ")}.
-                Consider these recently watched videos: ${userProfile.watchedVideos.slice(0, 5).join(", ")}.
-                
-                Respond with only a JSON array in this exact format:
-                [{
-                    "title": "Recommended video title",
-                    "search_query": "optimized YouTube search terms",
-                    "reason": "Brief explanation for this recommendation"
-                }]
-            `;
-
-            const response = await fetch(DEEPSEEK_API_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: "deepseek-chat",
-                    messages: [{ role: "user", content: prompt }],
-                    temperature: 0.7,
-                    max_tokens: 500
-                })
-            });
-
-            if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-
-            const data = await response.json();
-            const recommendations = JSON.parse(data.choices[0].message.content);
-            
-            // Search YouTube for these recommendations
-            const videoResults = await Promise.all(
-                recommendations.map(rec => 
-                    searchYouTubeForRecommendation(rec.search_query || rec.title)
-            ));
-            
-            // Add the recommendation reasons to the results
-            return videoResults
-                .filter(v => v)
-                .map((v, i) => ({ ...v, reason: recommendations[i]?.reason || "" }));
-            
-        } catch (error) {
-            console.error("DeepSeek API Error:", error);
-            throw error;
-        }
-    }
-
-    function extractGenresFromHistory(history) {
-        const genreKeywords = {
-            'bollywood': ['hindi', 'bollywood', 'filmi'],
-            'punjabi': ['punjabi', 'bhangra'],
-            'pop': ['pop', 'top 40'],
-            'rock': ['rock', 'alternative'],
-            'hiphop': ['hip hop', 'rap'],
-            'electronic': ['edm', 'electronic']
-        };
-        
-        const foundGenres = new Set();
-        
-        history.forEach(video => {
-            const title = video.title.toLowerCase();
-            for (const [genre, keywords] of Object.entries(genreKeywords)) {
-                if (keywords.some(kw => title.includes(kw))) {
-                    foundGenres.add(genre);
-                }
-            }
-        });
-        
-        return Array.from(foundGenres);
-    }
-
-    async function generatePersonalizedRecommendations() {
-        const history = getPlaybackHistory();
-        const section = document.getElementById('personalized-recommendations');
-        const loading = document.getElementById('ai-loading');
-        
-        section.style.display = 'block';
-        loading.style.display = 'inline-block';
-        
-        try {
-            const userProfile = {
-                watchedVideos: history.map(video => video.title),
-                genres: extractGenresFromHistory(history),
-                watchTimes: history.map(video => video.timestamp)
-            };
-            
-            const recommendations = await getDeepSeekRecommendations(userProfile);
-            
-            if (recommendations && recommendations.length > 0) {
-                // Hide default categories when showing personalized recommendations
-                document.getElementById('hindi-videos').style.display = 'none';
-                document.getElementById('english-videos').style.display = 'none';
-                document.getElementById('punjabi-videos').style.display = 'none';
-                
-                displayRecommendations(recommendations);
-            } else {
-                throw new Error("No recommendations received");
-            }
-        } catch (error) {
-            console.error("Personalization failed, showing default:", error);
-            Object.keys(playlists).forEach(containerId => {
-                fetchPlaylistVideos(playlists[containerId], containerId);
-            });
-        } finally {
-            loading.style.display = 'none';
-        }
-    }
-
-    function displayRecommendations(recommendations) {
-        const videoList = document.querySelector('#personalized-recommendations .video-list');
-        videoList.innerHTML = '';
-        
-        recommendations.forEach(video => {
-            const videoElement = document.createElement('div');
-            videoElement.classList.add('video');
-            videoElement.innerHTML = `
-                <h3>${video.title}</h3>
-                <img src="${video.thumbnail}" class="video-thumbnail" alt="${video.title}">
-                ${video.reason ? `<p class="recommendation-reason">${video.reason}</p>` : ''}
-            `;
-            videoElement.onclick = () => openFloatingPlayer(
-                video.id, 
-                video.title,
-                video.thumbnail
-            );
-            videoList.appendChild(videoElement);
-        });
-    }
-
-    // =====================
-    // Playback History Functions
-    // =====================
-    function getPlaybackHistory() {
-        const history = localStorage.getItem('playbackHistory');
-        return history ? JSON.parse(history) : [];
-    }
-
-    function clearPlaybackHistory() {
-        localStorage.removeItem('playbackHistory');
-        document.querySelector("#history-videos .video-list").innerHTML = "";
-        // Show default categories after clearing history
-        Object.keys(playlists).forEach(containerId => {
-            document.getElementById(containerId).style.display = "block";
-            fetchPlaylistVideos(playlists[containerId], containerId);
-        });
-        // Hide personalized section
-        document.getElementById('personalized-recommendations').style.display = 'none';
-    }
-
-    async function saveToPlaybackHistory(videoData) {
-        const history = getPlaybackHistory();
-        const existingIndex = history.findIndex(v => v.id === videoData.id);
-        
-        if (existingIndex >= 0) {
-            history.splice(existingIndex, 1);
-        }
-        
-        history.unshift(videoData);
-        const limitedHistory = history.slice(0, 50);
-        localStorage.setItem('playbackHistory', JSON.stringify(limitedHistory));
-        
-        displayPlaybackHistory();
-        
-        // Regenerate recommendations if we have enough history
-        if (limitedHistory.length > 2) {
-            generatePersonalizedRecommendations();
-        }
-    }
-
-    function displayPlaybackHistory() {
-        const history = getPlaybackHistory();
-        const videoList = document.querySelector("#history-videos .video-list");
-        videoList.innerHTML = "";
-        
-        history.forEach(video => {
-            createVideoElement(videoList, video.id, video.title, video.thumbnail);
-        });
-    }
-
-    // =====================
-    // UI Helper Functions
-    // =====================
-    function createVideoElement(container, videoId, title, thumbnailUrl) {
-        const videoElement = document.createElement("div");
-        videoElement.classList.add("video");
-        videoElement.innerHTML = `
-            <h3>${title}</h3>
-            <img src="${thumbnailUrl}" class="video-thumbnail" alt="${title}">
-        `;
-        videoElement.onclick = () => openFloatingPlayer(
-            videoId, 
-            title,
-            thumbnailUrl
-        );
-        container.appendChild(videoElement);
-    }
-
     async function openFloatingPlayer(videoId, videoTitle, thumbnailUrl) {
+        // Prepare video data
         const videoData = {
             id: videoId,
             title: videoTitle,
@@ -574,30 +347,82 @@
             timestamp: new Date().toISOString()
         };
         
+        // Save to cache and history
         await cacheVideoData(videoId, videoData);
         saveToPlaybackHistory(videoData);
         
+        // Show player
         document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoId}`;
         document.getElementById("floating-player").style.display = "block";
     }
 
-    function updatePersonalizedGreeting() {
-        const greetings = ['Music Lover', 'Melody Seeker', 'Rhythm Explorer'];
-        const now = new Date();
-        const hour = now.getHours();
-        
-        let timeBasedGreeting = hour < 12 ? 'Good Morning' : 
-                              hour < 18 ? 'Good Afternoon' : 'Good Evening';
-        
+    // Save a video to playback history
+    function saveToPlaybackHistory(videoData) {
         const history = getPlaybackHistory();
-        if (history.length > 0) {
-            const genres = extractGenresFromHistory(history);
-            const genreGreeting = genres.length > 0 ? 
-                `${genres[0].charAt(0).toUpperCase() + genres[0].slice(1)} Fan` : 
-                greetings[Math.floor(Math.random() * greetings.length)];
+        
+        // Remove if already exists (to avoid duplicates)
+        const existingIndex = history.findIndex(v => v.id === videoData.id);
+        if (existingIndex >= 0) {
+            history.splice(existingIndex, 1);
+        }
+        
+        // Add new video to beginning of array
+        history.unshift(videoData);
+        
+        // Keep only the last 50 items
+        const limitedHistory = history.slice(0, 50);
+        
+        localStorage.setItem('playbackHistory', JSON.stringify(limitedHistory));
+        
+        // Update the displayed history
+        displayPlaybackHistory();
+    }
+
+    // Get all playback history
+    function getPlaybackHistory() {
+        const history = localStorage.getItem('playbackHistory');
+        return history ? JSON.parse(history) : [];
+    }
+
+    // Clear playback history
+    function clearPlaybackHistory() {
+        localStorage.removeItem('playbackHistory');
+        document.querySelector("#history-videos .video-list").innerHTML = "";
+    }
+
+    // Display playback history
+    async function displayPlaybackHistory() {
+        const history = getPlaybackHistory();
+        const videoList = document.querySelector("#history-videos .video-list");
+        videoList.innerHTML = "";
+        
+        for (const video of history) {
+            // Try to get cached data if missing some fields
+            let videoData = video;
+            if (!video.thumbnail || !video.link) {
+                const cachedData = await getCachedVideoData(video.id);
+                if (cachedData) {
+                    videoData = { ...video, ...cachedData };
+                }
+            }
             
-            document.getElementById('personalized-greeting').textContent = 
-                `${timeBasedGreeting}, ${genreGreeting}!`;
+            const videoElement = document.createElement("div");
+            videoElement.classList.add("video");
+            videoElement.innerHTML = `
+                <h3>${videoData.title}</h3>
+                <p><small>${new Date(videoData.timestamp).toLocaleString()}</small></p>
+                <img src="${videoData.thumbnail}" class="video-thumbnail" alt="${videoData.title}">
+            `;
+            videoElement.onclick = () => {
+                document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoData.id}`;
+                document.getElementById("floating-player").style.display = "block";
+                // Update timestamp
+                saveToPlaybackHistory({
+                    ...videoData,
+                    timestamp: new Date().toISOString()
+                });
+            };
+            videoList.appendChild(videoElement);
         }
     }
 
@@ -623,5 +448,6 @@
         floatingPlayer.style.cursor = "grab";
     });
 </script>
+
 </body>
 </html>
