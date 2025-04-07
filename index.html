@@ -134,6 +134,36 @@
             margin-left: 10px;
             font-size: 12px;
         }
+
+        /* Recommendation Styles */
+        #recommendations .video {
+            position: relative;
+        }
+
+        #recommendations .video::after {
+            content: "Recommended";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #1db954;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        #recommendations .video p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .loading {
+            color: #aaa;
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -150,6 +180,13 @@
     <div id="search-results" class="category" style="display:none;">
         <h2>Search Results</h2>
         <div class="video-list"></div>
+    </div>
+
+    <div id="recommendations" class="category">
+        <h2>Recommended For You</h2>
+        <div class="video-list">
+            <p class="loading">Recommendations will appear based on your listening history</p>
+        </div>
     </div>
 
     <div id="history-videos" class="category">
@@ -194,6 +231,8 @@
     }
     
     const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
+    const DEEPSEEK_API_KEY = "sk-8c7d73d4fb414b4a88227ebfab5f3eb2"; // Replace with your actual key
+    const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
     const CACHE_NAME = 'orpheus-video-cache';
     
     const playlists = {
@@ -209,6 +248,11 @@
             Object.keys(playlists).forEach(containerId => {
                 fetchPlaylistVideos(playlists[containerId], containerId);
             });
+            
+            // Load recommendations if sufficient history exists
+            if (getPlaybackHistory().length > 3) {
+                updateRecommendations();
+            }
         });
         
         // Add Enter key support for search
@@ -224,6 +268,100 @@
             document.getElementById("floating-video").src = "";
         });
     });
+
+    // DeepSeek API Integration
+    async function getDeepSeekRecommendations(userHistory) {
+        try {
+            const response = await fetch(DEEPSEEK_API_URL, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "deepseek-chat",
+                    messages: [{
+                        role: "system",
+                        content: "You are a music recommendation assistant. Suggest 5 YouTube music videos based on the user's history."
+                    }, {
+                        role: "user",
+                        content: `Based on these recently played songs: ${JSON.stringify(userHistory.slice(0, 5).map(v => v.title)}, suggest 5 similar songs to recommend. Only respond with a JSON array of song titles and artists in this format: [{"title":"...","artist":"..."}]`
+                    }],
+                    temperature: 0.7
+                })
+            });
+
+            const data = await response.json();
+            try {
+                return JSON.parse(data.choices[0].message.content);
+            } catch (e) {
+                console.error("Failed to parse DeepSeek response:", e);
+                return [];
+            }
+        } catch (error) {
+            console.error("DeepSeek API error:", error);
+            return [];
+        }
+    }
+
+    async function updateRecommendations() {
+        const history = getPlaybackHistory();
+        const recommendationsContainer = document.querySelector("#recommendations .video-list");
+        
+        if (history.length < 3) {
+            recommendationsContainer.innerHTML = "<p class='loading'>Play more songs to get recommendations</p>";
+            return;
+        }
+        
+        // Show loading state
+        recommendationsContainer.innerHTML = "<p class='loading'>Loading recommendations...</p>";
+        
+        // Get AI recommendations
+        const recommendations = await getDeepSeekRecommendations(history);
+        
+        // Clear and display new recommendations
+        recommendationsContainer.innerHTML = "";
+        
+        if (recommendations.length === 0) {
+            recommendationsContainer.innerHTML = "<p class='loading'>Could not load recommendations. Try again later.</p>";
+            return;
+        }
+        
+        // Search YouTube for each recommended song
+        for (const song of recommendations) {
+            const query = `${song.title} ${song.artist}`;
+            const videoId = await searchYouTubeForRecommendation(query);
+            
+            if (videoId) {
+                const videoElement = document.createElement("div");
+                videoElement.classList.add("video");
+                videoElement.innerHTML = `
+                    <h3>${song.title}</h3>
+                    <p>${song.artist}</p>
+                    <img src="https://i.ytimg.com/vi/${videoId}/mqdefault.jpg" class="video-thumbnail" alt="${song.title}">
+                `;
+                videoElement.onclick = () => openFloatingPlayer(
+                    videoId, 
+                    `${song.title} - ${song.artist}`,
+                    `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+                );
+                recommendationsContainer.appendChild(videoElement);
+            }
+        }
+    }
+
+    async function searchYouTubeForRecommendation(query) {
+        try {
+            const response = await fetch(
+                `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1&key=${API_KEY}`
+            );
+            const data = await response.json();
+            return data.items[0]?.id?.videoId;
+        } catch (error) {
+            console.error("YouTube search error:", error);
+            return null;
+        }
+    }
 
     // Initialize Cache API
     async function initializeCache() {
@@ -357,7 +495,7 @@
     }
 
     // Save a video to playback history
-    function saveToPlaybackHistory(videoData) {
+    async function saveToPlaybackHistory(videoData) {
         const history = getPlaybackHistory();
         
         // Remove if already exists (to avoid duplicates)
@@ -376,6 +514,11 @@
         
         // Update the displayed history
         displayPlaybackHistory();
+        
+        // Generate new recommendations when history changes
+        if (history.length >= 3) {
+            updateRecommendations();
+        }
     }
 
     // Get all playback history
@@ -388,6 +531,8 @@
     function clearPlaybackHistory() {
         localStorage.removeItem('playbackHistory');
         document.querySelector("#history-videos .video-list").innerHTML = "";
+        document.querySelector("#recommendations .video-list").innerHTML = 
+            "<p class='loading'>Play more songs to get recommendations</p>";
     }
 
     // Display playback history
