@@ -1,6 +1,6 @@
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open('orpheus-cache-13').then((cache) => {
+        caches.open('orpheus-video-cache-v2').then((cache) => {
             return cache.addAll([
                 '/',
                 '/index.html',
@@ -24,7 +24,7 @@ self.addEventListener('activate', (event) => {
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cache) => {
-                    if (cache !== 'orpheus-cache-v13') {
+                    if (cache !== 'orpheus-video-cache-v2') {
                         return caches.delete(cache);
                     }
                 })
