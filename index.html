@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orpheus</title>
+    <title>Orpheus Music Player</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
     <style>
@@ -148,6 +148,20 @@
             opacity: 0.9;
         }
 
+        /* Artist/Composer styles */
+        .artist, .composer {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #aaa;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .artist {
+            color: var(--primary-color);
+        }
+
         /* Floating Draggable Video Player */
         #floating-player {
             position: fixed;
@@ -214,6 +228,17 @@
 
         #close-player:hover {
             background-color: #ff6666;
+        }
+
+        #autoplay-toggle {
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 5px 10px;
+            margin-right: 10px;
+            cursor: pointer;
+            font-size: 12px;
         }
 
         .clear-history {
@@ -302,7 +327,7 @@
 <body>
 
 <div class="container">
-    <h1>Orpheus</h1>
+    <h1>Orpheus Music</h1>
     <a href="index1.html" style="color: var(--primary-color); text-decoration: none;">← Switch to old version</a>
 
     <div class="search-bar">
@@ -357,6 +382,7 @@
 <div id="floating-player">
     <iframe id="floating-video" allowfullscreen></iframe>
     <div id="player-controls">
+        <button id="autoplay-toggle" title="Toggle autoplay of similar songs">Autoplay: ON</button>
         <div id="player-title">No video playing</div>
         <button id="close-player" title="Close player">×</button>
     </div>
@@ -378,7 +404,9 @@
     }
     
     const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
-    const CACHE_NAME = 'orpheus-video-cache-v2';
+    const CACHE_NAME = 'orpheus-video-cache-v3';
+    let autoplayEnabled = true;
+    let currentVideoId = null;
     
     const playlists = {
         "hindi-videos": "PL4uUU2x5ZgR1JOlcY9SZB94MW6fBE8ovU",
@@ -388,6 +416,18 @@
 
     // Initialize the page
     document.addEventListener('DOMContentLoaded', function() {
+        // Load autoplay preference
+        if (localStorage.getItem('autoplayEnabled') !== null) {
+            autoplayEnabled = localStorage.getItem('autoplayEnabled') === 'true';
+            document.getElementById('autoplay-toggle').textContent = 
+                `Autoplay: ${autoplayEnabled ? 'ON' : 'OFF'}`;
+        }
+        
+        // Request notification permissions
+        if ('Notification' in window) {
+            Notification.requestPermission();
+        }
+        
         initializeCache().then(() => {
             displayPlaybackHistory();
             Object.keys(playlists).forEach(containerId => {
@@ -395,7 +435,6 @@
             });
         }).catch(err => {
             console.error('Cache initialization error:', err);
-            // Fallback - still try to load content
             displayPlaybackHistory();
             Object.keys(playlists).forEach(containerId => {
                 fetchPlaylistVideos(playlists[containerId], containerId);
@@ -415,9 +454,25 @@
             closeFloatingPlayer();
         });
         
+        // Autoplay toggle
+        document.getElementById("autoplay-toggle").addEventListener("click", function(e) {
+            e.stopPropagation();
+            toggleAutoplay();
+        });
+        
         // Initialize draggable player
         initDraggablePlayer();
     });
+
+    // Toggle autoplay function
+    function toggleAutoplay() {
+        autoplayEnabled = !autoplayEnabled;
+        document.getElementById('autoplay-toggle').textContent = 
+            `Autoplay: ${autoplayEnabled ? 'ON' : 'OFF'}`;
+        
+        // Save preference to localStorage
+        localStorage.setItem('autoplayEnabled', autoplayEnabled);
+    }
 
     // Initialize Cache API
     async function initializeCache() {
@@ -431,16 +486,126 @@
         }
     }
 
-    // Cache video data
+    // Extract artist/composer from description
+    function extractFromDescription(description) {
+        const patterns = [
+            /Artist:\s*(.+)/i,
+            /Singer:\s*(.+)/i,
+            /Performed by:\s*(.+)/i,
+            /Vocals:\s*(.+)/i,
+            /(.+)\s+official (audio|video)/i,
+            /(.+)\s+-/i
+        ];
+        
+        const lines = description.split('\n');
+        
+        for (const line of lines) {
+            for (const pattern of patterns) {
+                const match = line.match(pattern);
+                if (match && match[1]) {
+                    return match[1].trim();
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    function extractComposerFromDescription(description) {
+        const patterns = [
+            /Composer:\s*(.+)/i,
+            /Music by:\s*(.+)/i,
+            /Composed by:\s*(.+)/i,
+            /Lyrics by:\s*(.+)/i,
+            /Written by:\s*(.+)/i
+        ];
+        
+        const lines = description.split('\n');
+        
+        for (const line of lines) {
+            for (const pattern of patterns) {
+                const match = line.match(pattern);
+                if (match && match[1]) {
+                    return match[1].trim();
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    function extractFromTitle(title) {
+        const patterns = [
+            /^(.+?)\s*[-–|:]\s*.+/i,
+            /^(.+?)\s+"(.+?)"/i,
+            /(.+?)\s+official/i
+        ];
+        
+        for (const pattern of patterns) {
+            const match = title.match(pattern);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
+        }
+        
+        return null;
+    }
+
+    // Fetch additional video details including description
+    async function fetchVideoDetails(videoId) {
+        const API_URL = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
+        
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            const snippet = data.items[0].snippet;
+            
+            // Extract from title (fallback)
+            let artist = extractFromTitle(snippet.title);
+            let composer = 'Unknown Composer';
+            
+            // Try to extract from description
+            if (snippet.description) {
+                const descArtist = extractFromDescription(snippet.description);
+                if (descArtist) artist = descArtist;
+                
+                const descComposer = extractComposerFromDescription(snippet.description);
+                if (descComposer) composer = descComposer;
+            }
+            
+            return { 
+                artist: artist || 'Unknown Artist',
+                composer: composer || 'Unknown Composer',
+                description: snippet.description
+            };
+        } catch (error) {
+            console.error('Error fetching video details:', error);
+            return { 
+                artist: 'Unknown Artist', 
+                composer: 'Unknown Composer' 
+            };
+        }
+    }
+
+    // Cache video data with artist/composer info
     async function cacheVideoData(videoId, videoData) {
         try {
+            // First fetch additional video details
+            const details = await fetchVideoDetails(videoId);
+            
+            const enhancedData = {
+                ...videoData,
+                artist: details.artist,
+                composer: details.composer,
+                description: details.description
+            };
+            
             const cache = await caches.open(CACHE_NAME);
             const url = `https://www.youtube.com/watch?v=${videoId}`;
-            const response = new Response(JSON.stringify(videoData), {
+            const response = new Response(JSON.stringify(enhancedData), {
                 headers: { 'Content-Type': 'application/json' }
             });
             await cache.put(url, response);
-            console.log('Video data cached:', videoId);
         } catch (error) {
             console.error('Failed to cache video data:', error);
         }
@@ -455,7 +620,6 @@
             
             if (response) {
                 const data = await response.json();
-                console.log('Retrieved from cache:', videoId);
                 return data;
             }
             return null;
@@ -465,6 +629,320 @@
         }
     }
 
+    // Find similar songs by artist or composer
+    async function findSimilarSongs(currentVideoId, byField = 'artist') {
+        try {
+            // Get current video details
+            const currentVideo = await getCachedVideoData(currentVideoId);
+            if (!currentVideo) return null;
+            
+            // Get playback history
+            const history = getPlaybackHistory();
+            
+            // Find videos by the same artist/composer
+            const similarVideos = [];
+            
+            for (const video of history) {
+                // Get full video data from cache
+                const fullVideoData = await getCachedVideoData(video.id);
+                
+                if (fullVideoData && fullVideoData.id !== currentVideoId) {
+                    // Check if the field matches (case insensitive)
+                    const currentField = currentVideo[byField].toLowerCase();
+                    const compareField = fullVideoData[byField].toLowerCase();
+                    
+                    // Basic similarity check
+                    if (compareField.includes(currentField) || 
+                        currentField.includes(compareField) ||
+                        compareField === currentField) {
+                        similarVideos.push(fullVideoData);
+                    }
+                }
+            }
+            
+            return similarVideos;
+        } catch (error) {
+            console.error('Error finding similar songs:', error);
+            return null;
+        }
+    }
+
+    // Create video element with artist/composer info
+    function createVideoElement(videoId, title, thumbnailUrl, date = '', artist = '', composer = '') {
+        const videoElement = document.createElement("div");
+        videoElement.classList.add("video");
+        
+        const dateElement = date ? `<p class="timestamp">${date}</p>` : '';
+        const artistElement = artist ? `<p class="artist">Artist: ${artist}</p>` : '';
+        const composerElement = composer ? `<p class="composer">Composer: ${composer}</p>` : '';
+        
+        videoElement.innerHTML = `
+            <h3 title="${title}">${title}</h3>
+            ${artistElement}
+            ${composerElement}
+            ${dateElement}
+            <img src="${thumbnailUrl}" class="video-thumbnail" alt="${title}" loading="lazy">
+        `;
+        
+        videoElement.onclick = async () => {
+            const videoData = await getCachedVideoData(videoId) || {
+                id: videoId,
+                title: title,
+                thumbnail: thumbnailUrl,
+                link: `https://www.youtube.com/watch?v=${videoId}`,
+                timestamp: new Date().toISOString(),
+                artist: 'Unknown Artist',
+                composer: 'Unknown Composer'
+            };
+            openFloatingPlayer(videoData);
+        };
+        
+        return videoElement;
+    }
+
+    // Open floating player with enhanced functionality
+    async function openFloatingPlayer(videoData) {
+        currentVideoId = videoData.id;
+        
+        try {
+            // Save to cache and history
+            await cacheVideoData(videoData.id, videoData);
+            saveToPlaybackHistory(videoData);
+            
+            // Show player
+            const iframe = document.getElementById("floating-video");
+            iframe.src = `https://www.youtube.com/embed/${videoData.id}?autoplay=1&enablejsapi=1`;
+            document.getElementById("player-title").textContent = videoData.title;
+            document.getElementById("floating-player").style.display = "block";
+            
+            // Setup YouTube API listener
+            iframe.onload = function() {
+                this.contentWindow.postMessage('{"event":"command","func":"addEventListener","args":["onStateChange","onPlayerStateChange"]}', '*');
+            };
+            
+            // Analytics event
+            if (window.va) {
+                window.va('track', 'PlayVideo', { 
+                    videoId: videoData.id, 
+                    title: videoData.title,
+                    artist: videoData.artist,
+                    composer: videoData.composer
+                });
+            }
+        } catch (error) {
+            console.error('Error opening player:', error);
+            alert('Failed to play video. Please try again.');
+        }
+    }
+
+    // YouTube player state change handler
+    window.onPlayerStateChange = async function(event) {
+        // When video ends (state = 0)
+        if (event.data === 0 && autoplayEnabled && currentVideoId) {
+            const similarSongs = await findSimilarSongs(currentVideoId);
+            
+            if (similarSongs && similarSongs.length > 0) {
+                // Sort by most recently played
+                similarSongs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                // Play the most recent similar song
+                const nextVideo = similarSongs[0];
+                openFloatingPlayer(nextVideo);
+                
+                // Notification
+                showNotification(`Now playing: ${nextVideo.title} by ${nextVideo.artist}`);
+            }
+        }
+    };
+
+    // Show notification
+    function showNotification(message) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Orpheus Music Player', { body: message });
+        } else if ('Notification' in window && Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    new Notification('Orpheus Music Player', { body: message });
+                }
+            });
+        }
+    }
+
+    // Close floating player
+    function closeFloatingPlayer() {
+        document.getElementById("floating-player").style.display = "none";
+        document.getElementById("floating-video").src = "";
+        document.getElementById("player-title").textContent = "No video playing";
+        currentVideoId = null;
+    }
+
+    // Save to playback history
+    function saveToPlaybackHistory(videoData) {
+        const history = getPlaybackHistory();
+        
+        // Remove if already exists (to avoid duplicates)
+        const existingIndex = history.findIndex(v => v.id === videoData.id);
+        if (existingIndex >= 0) {
+            history.splice(existingIndex, 1);
+        }
+        
+        // Add new video to beginning of array
+        history.unshift(videoData);
+        
+        // Keep only the last 50 items
+        const limitedHistory = history.slice(0, 50);
+        
+        localStorage.setItem('playbackHistory', JSON.stringify(limitedHistory));
+        
+        // Update the displayed history
+        displayPlaybackHistory();
+    }
+
+    // Get playback history
+    function getPlaybackHistory() {
+        const history = localStorage.getItem('playbackHistory');
+        return history ? JSON.parse(history) : [];
+    }
+
+    // Clear playback history
+    function clearPlaybackHistory() {
+        if (confirm("Are you sure you want to clear your playback history?")) {
+            localStorage.removeItem('playbackHistory');
+            document.querySelector("#history-videos .video-list").innerHTML = 
+                '<p>Your playback history is empty.</p>';
+                
+            if (window.va) {
+                window.va('track', 'ClearHistory');
+            }
+        }
+    }
+
+    // Display playback history
+    async function displayPlaybackHistory() {
+        const history = getPlaybackHistory();
+        const videoList = document.querySelector("#history-videos .video-list");
+        const loadingElement = document.getElementById("history-loading");
+        
+        loadingElement.style.display = "flex";
+        videoList.innerHTML = "";
+        
+        if (history.length === 0) {
+            videoList.innerHTML = '<p>Your playback history is empty.</p>';
+            loadingElement.style.display = "none";
+            return;
+        }
+        
+        // Process history in chunks
+        const chunkSize = 5;
+        for (let i = 0; i < history.length; i += chunkSize) {
+            const chunk = history.slice(i, i + chunkSize);
+            
+            await Promise.all(chunk.map(async (video) => {
+                let videoData = video;
+                const cachedData = await getCachedVideoData(video.id);
+                if (cachedData) {
+                    videoData = { ...video, ...cachedData };
+                }
+                
+                const videoElement = createVideoElement(
+                    videoData.id,
+                    videoData.title,
+                    videoData.thumbnail,
+                    new Date(videoData.timestamp).toLocaleString(),
+                    videoData.artist,
+                    videoData.composer
+                );
+                
+                videoList.appendChild(videoElement);
+            }));
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        loadingElement.style.display = "none";
+    }
+
+    // Initialize draggable player
+    function initDraggablePlayer() {
+        const floatingPlayer = document.getElementById("floating-player");
+        let isDragging = false;
+        let offsetX, offsetY;
+        let startX, startY;
+
+        floatingPlayer.addEventListener("mousedown", (e) => {
+            if (e.target === floatingPlayer || e.target.id === "player-controls" || e.target.id === "player-title") {
+                isDragging = true;
+                floatingPlayer.classList.add("active");
+                offsetX = e.clientX - floatingPlayer.getBoundingClientRect().left;
+                offsetY = e.clientY - floatingPlayer.getBoundingClientRect().top;
+                startX = e.clientX;
+                startY = e.clientY;
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            if (!isDragging) return;
+            
+            const x = e.clientX - offsetX;
+            const y = e.clientY - offsetY;
+            
+            const maxX = window.innerWidth - floatingPlayer.offsetWidth;
+            const maxY = window.innerHeight - floatingPlayer.offsetHeight;
+            
+            floatingPlayer.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+            floatingPlayer.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+        });
+
+        document.addEventListener("mouseup", (e) => {
+            if (!isDragging) return;
+            
+            const dist = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
+            if (dist < 5) {
+                // Click behavior could be added here
+            }
+            
+            isDragging = false;
+            floatingPlayer.classList.remove("active");
+        });
+
+        // Touch support
+        floatingPlayer.addEventListener("touchstart", (e) => {
+            if (e.target === floatingPlayer || e.target.id === "player-controls" || e.target.id === "player-title") {
+                isDragging = true;
+                floatingPlayer.classList.add("active");
+                const touch = e.touches[0];
+                offsetX = touch.clientX - floatingPlayer.getBoundingClientRect().left;
+                offsetY = touch.clientY - floatingPlayer.getBoundingClientRect().top;
+                startX = touch.clientX;
+                startY = touch.clientY;
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener("touchmove", (e) => {
+            if (!isDragging || !e.touches.length) return;
+            
+            const touch = e.touches[0];
+            const x = touch.clientX - offsetX;
+            const y = touch.clientY - offsetY;
+            
+            const maxX = window.innerWidth - floatingPlayer.offsetWidth;
+            const maxY = window.innerHeight - floatingPlayer.offsetHeight;
+            
+            floatingPlayer.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+            floatingPlayer.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+            
+            e.preventDefault();
+        });
+
+        document.addEventListener("touchend", () => {
+            isDragging = false;
+            floatingPlayer.classList.remove("active");
+        });
+    }
+
+    // Fetch playlist videos
     function fetchPlaylistVideos(playlistId, containerId) {
         const API_URL = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=10&key=${API_KEY}`;
         
@@ -509,6 +987,7 @@
             });
     }
 
+    // Get best thumbnail
     function getBestThumbnail(thumbnails) {
         return thumbnails?.medium?.url || 
                thumbnails?.high?.url ||
@@ -516,27 +995,7 @@
                'https://i.ytimg.com/vi/default.jpg';
     }
 
-    function createVideoElement(videoId, title, thumbnailUrl, date = '') {
-        const videoElement = document.createElement("div");
-        videoElement.classList.add("video");
-        
-        const dateElement = date ? `<p class="timestamp">${date}</p>` : '';
-        
-        videoElement.innerHTML = `
-            <h3 title="${title}">${title}</h3>
-            ${dateElement}
-            <img src="${thumbnailUrl}" class="video-thumbnail" alt="${title}" loading="lazy">
-        `;
-        
-        videoElement.onclick = () => openFloatingPlayer(
-            videoId, 
-            title,
-            thumbnailUrl
-        );
-        
-        return videoElement;
-    }
-
+    // Search YouTube
     function searchYouTube() {
         const query = document.getElementById("search-query").value.trim();
         if (!query) {
@@ -587,217 +1046,6 @@
                 videoList.innerHTML = '<p>Failed to load search results. Please try again later.</p>';
                 loadingElement.style.display = "none";
             });
-    }
-
-    async function openFloatingPlayer(videoId, videoTitle, thumbnailUrl) {
-        // Prepare video data
-        const videoData = {
-            id: videoId,
-            title: videoTitle,
-            thumbnail: thumbnailUrl,
-            link: `https://www.youtube.com/watch?v=${videoId}`,
-            timestamp: new Date().toISOString()
-        };
-        
-        try {
-            // Save to cache and history
-            await cacheVideoData(videoId, videoData);
-            saveToPlaybackHistory(videoData);
-            
-            // Show player
-            document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
-            document.getElementById("player-title").textContent = videoTitle;
-            document.getElementById("floating-player").style.display = "block";
-            
-            // Analytics event
-            if (window.va) {
-                window.va('track', 'PlayVideo', { videoId, title: videoTitle });
-            }
-        } catch (error) {
-            console.error('Error opening player:', error);
-            alert('Failed to play video. Please try again.');
-        }
-    }
-    
-    function closeFloatingPlayer() {
-        document.getElementById("floating-player").style.display = "none";
-        document.getElementById("floating-video").src = "";
-        document.getElementById("player-title").textContent = "No video playing";
-    }
-
-    // Save a video to playback history
-    function saveToPlaybackHistory(videoData) {
-        const history = getPlaybackHistory();
-        
-        // Remove if already exists (to avoid duplicates)
-        const existingIndex = history.findIndex(v => v.id === videoData.id);
-        if (existingIndex >= 0) {
-            history.splice(existingIndex, 1);
-        }
-        
-        // Add new video to beginning of array
-        history.unshift(videoData);
-        
-        // Keep only the last 50 items
-        const limitedHistory = history.slice(0, 50);
-        
-        localStorage.setItem('playbackHistory', JSON.stringify(limitedHistory));
-        
-        // Update the displayed history
-        displayPlaybackHistory();
-    }
-
-    // Get all playback history
-    function getPlaybackHistory() {
-        const history = localStorage.getItem('playbackHistory');
-        return history ? JSON.parse(history) : [];
-    }
-
-    // Clear playback history
-    function clearPlaybackHistory() {
-        if (confirm("Are you sure you want to clear your playback history?")) {
-            localStorage.removeItem('playbackHistory');
-            document.querySelector("#history-videos .video-list").innerHTML = 
-                '<p>Your playback history is empty.</p>';
-                
-            // Analytics event
-            if (window.va) {
-                window.va('track', 'ClearHistory');
-            }
-        }
-    }
-
-    // Display playback history
-    async function displayPlaybackHistory() {
-        const history = getPlaybackHistory();
-        const videoList = document.querySelector("#history-videos .video-list");
-        const loadingElement = document.getElementById("history-loading");
-        
-        loadingElement.style.display = "flex";
-        videoList.innerHTML = "";
-        
-        if (history.length === 0) {
-            videoList.innerHTML = '<p>Your playback history is empty.</p>';
-            loadingElement.style.display = "none";
-            return;
-        }
-        
-        // Process history in chunks to avoid UI freeze
-        const chunkSize = 5;
-        for (let i = 0; i < history.length; i += chunkSize) {
-            const chunk = history.slice(i, i + chunkSize);
-            
-            // Use Promise.all to process chunk in parallel
-            await Promise.all(chunk.map(async (video) => {
-                // Try to get cached data if missing some fields
-                let videoData = video;
-                if (!video.thumbnail || !video.link) {
-                    const cachedData = await getCachedVideoData(video.id);
-                    if (cachedData) {
-                        videoData = { ...video, ...cachedData };
-                    }
-                }
-                
-                const videoElement = createVideoElement(
-                    videoData.id,
-                    videoData.title,
-                    videoData.thumbnail,
-                    new Date(videoData.timestamp).toLocaleString()
-                );
-                
-                // Append to video list
-                videoList.appendChild(videoElement);
-            }));
-            
-            // Small delay between chunks to keep UI responsive
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        
-        loadingElement.style.display = "none";
-    }
-
-    // Initialize draggable player functionality
-    function initDraggablePlayer() {
-        const floatingPlayer = document.getElementById("floating-player");
-        let isDragging = false;
-        let offsetX, offsetY;
-        let startX, startY;
-
-        floatingPlayer.addEventListener("mousedown", (e) => {
-            // Only start drag if clicking on the player, not on buttons or iframe
-            if (e.target === floatingPlayer || e.target.id === "player-controls" || e.target.id === "player-title") {
-                isDragging = true;
-                floatingPlayer.classList.add("active");
-                offsetX = e.clientX - floatingPlayer.getBoundingClientRect().left;
-                offsetY = e.clientY - floatingPlayer.getBoundingClientRect().top;
-                startX = e.clientX;
-                startY = e.clientY;
-                e.preventDefault(); // Prevent text selection
-            }
-        });
-
-        document.addEventListener("mousemove", (e) => {
-            if (!isDragging) return;
-            
-            const x = e.clientX - offsetX;
-            const y = e.clientY - offsetY;
-            
-            // Constrain to viewport
-            const maxX = window.innerWidth - floatingPlayer.offsetWidth;
-            const maxY = window.innerHeight - floatingPlayer.offsetHeight;
-            
-            floatingPlayer.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
-            floatingPlayer.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
-        });
-
-        document.addEventListener("mouseup", (e) => {
-            if (!isDragging) return;
-            
-            // Check if this was a click (minimal movement)
-            const dist = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
-            if (dist < 5) {
-                // Treat as click - maybe maximize player in future?
-            }
-            
-            isDragging = false;
-            floatingPlayer.classList.remove("active");
-        });
-
-        // Touch support
-        floatingPlayer.addEventListener("touchstart", (e) => {
-            if (e.target === floatingPlayer || e.target.id === "player-controls" || e.target.id === "player-title") {
-                isDragging = true;
-                floatingPlayer.classList.add("active");
-                const touch = e.touches[0];
-                offsetX = touch.clientX - floatingPlayer.getBoundingClientRect().left;
-                offsetY = touch.clientY - floatingPlayer.getBoundingClientRect().top;
-                startX = touch.clientX;
-                startY = touch.clientY;
-                e.preventDefault();
-            }
-        });
-
-        document.addEventListener("touchmove", (e) => {
-            if (!isDragging || !e.touches.length) return;
-            
-            const touch = e.touches[0];
-            const x = touch.clientX - offsetX;
-            const y = touch.clientY - offsetY;
-            
-            // Constrain to viewport
-            const maxX = window.innerWidth - floatingPlayer.offsetWidth;
-            const maxY = window.innerHeight - floatingPlayer.offsetHeight;
-            
-            floatingPlayer.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
-            floatingPlayer.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
-            
-            e.preventDefault();
-        });
-
-        document.addEventListener("touchend", () => {
-            isDragging = false;
-            floatingPlayer.classList.remove("active");
-        });
     }
 </script>
 
