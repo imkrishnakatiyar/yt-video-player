@@ -3,27 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orpheus</title>
+    <title>Orpheus Music Player</title>
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
     <style>
+        :root {
+            --primary-color: #1db954;
+            --background-color: #121212;
+            --card-color: #1e1e1e;
+            --text-color: #ffffff;
+            --danger-color: #ff4444;
+        }
+        
         body {
             font-family: 'Arial', sans-serif;
-            background-color: #121212;
-            color: white;
+            background-color: var(--background-color);
+            color: var(--text-color);
             margin: 0;
             padding: 0;
         }
 
         .container {
-            max-width: 90%;
+            max-width: 1200px;
             margin: 20px auto;
             padding: 20px;
         }
 
         h1 {
             text-align: left;
-            font-size: 24px;
+            font-size: 28px;
             margin-bottom: 20px;
+            color: var(--primary-color);
         }
 
         .search-bar {
@@ -34,18 +44,36 @@
 
         .search-bar input {
             flex: 1;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 12px;
+            border-radius: 25px;
             border: none;
+            background-color: #2a2a2a;
+            color: white;
+            font-size: 16px;
+        }
+
+        .search-bar input:focus {
+            outline: 2px solid var(--primary-color);
         }
 
         .search-bar button {
-            padding: 10px 15px;
-            background-color: #1db954;
+            padding: 12px 20px;
+            background-color: var(--primary-color);
             border: none;
-            border-radius: 5px;
+            border-radius: 25px;
             color: white;
             cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .search-bar button:hover {
+            background-color: #1ed760;
+            transform: scale(1.05);
+        }
+
+        .search-bar button:active {
+            transform: scale(0.98);
         }
 
         .category {
@@ -53,40 +81,71 @@
         }
 
         .category h2 {
-            font-size: 20px;
+            font-size: 22px;
             margin-bottom: 15px;
+            display: flex;
+            align-items: center;
         }
 
         .video-list {
             display: flex;
             gap: 20px;
             overflow-x: auto;
-            padding-bottom: 10px;
+            padding-bottom: 15px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) var(--background-color);
+        }
+
+        .video-list::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .video-list::-webkit-scrollbar-track {
+            background: var(--background-color);
+            border-radius: 10px;
+        }
+
+        .video-list::-webkit-scrollbar-thumb {
+            background-color: var(--primary-color);
+            border-radius: 10px;
         }
 
         .video {
-            background: #1e1e1e;
+            background: var(--card-color);
             padding: 15px;
             border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             text-align: center;
             flex: 0 0 auto;
-            width: 300px;
+            width: 280px;
             cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .video iframe {
-            width: 100%;
-            height: 180px;
-            border-radius: 8px;
+        .video:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .video h3 {
+            margin: 10px 0;
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .video-thumbnail {
             width: 100%;
-            height: 180px;
+            height: 160px;
             border-radius: 8px;
             object-fit: cover;
             background-color: #333;
+            transition: opacity 0.2s;
+        }
+
+        .video:hover .video-thumbnail {
+            opacity: 0.9;
         }
 
         /* Floating Draggable Video Player */
@@ -100,56 +159,163 @@
             display: none;
             cursor: grab;
             z-index: 1000;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: 0 0 20px rgba(0,0,0,0.7);
+            transition: transform 0.2s;
+            user-select: none;
+        }
+
+        #floating-player:hover {
+            transform: scale(1.02);
+        }
+
+        #floating-player.active {
+            cursor: grabbing;
         }
 
         #floating-video {
             width: 100%;
             height: 180px;
-            border-radius: 10px;
+            border-radius: 10px 10px 0 0;
+            border: none;
+        }
+
+        #player-controls {
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #000;
+            border-radius: 0 0 10px 10px;
+        }
+
+        #player-title {
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            padding: 0 10px;
         }
 
         #close-player {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: red;
+            background: var(--danger-color);
             color: white;
             border: none;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            width: 25px;
+            height: 25px;
             cursor: pointer;
-            z-index: 1001;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        #close-player:hover {
+            background-color: #ff6666;
         }
 
         .clear-history {
-            background: #ff4444;
+            background: var(--danger-color);
             color: white;
             border: none;
             padding: 5px 10px;
-            border-radius: 5px;
+            border-radius: 15px;
             cursor: pointer;
             margin-left: 10px;
             font-size: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .clear-history:hover {
+            background-color: #ff6666;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-container {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                max-width: 95%;
+                padding: 10px;
+            }
+            
+            .video {
+                width: 220px;
+            }
+            
+            .video-thumbnail {
+                height: 120px;
+            }
+            
+            #floating-player {
+                width: 280px;
+            }
+            
+            #floating-video {
+                height: 160px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .search-bar {
+                flex-direction: column;
+            }
+            
+            .video {
+                width: 180px;
+            }
+            
+            #floating-player {
+                width: 90%;
+                right: 5%;
+                bottom: 10px;
+            }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Orpheus</h1>
-    <a href="index1.html">old orpheus</a>
+    <h1>Orpheus Music</h1>
+    <a href="index1.html" style="color: var(--primary-color); text-decoration: none;">← Switch to old version</a>
 
     <div class="search-bar">
-        <input type="text" id="search-query" placeholder="Search for music videos...">
+        <input type="text" id="search-query" placeholder="Search for music videos..." autocomplete="off">
         <button onclick="searchYouTube()">Search</button>
     </div>
 
     <div id="search-results" class="category" style="display:none;">
         <h2>Search Results</h2>
         <div class="video-list"></div>
+        <div id="search-loading" class="loading-container" style="display:none;">
+            <div class="loading"></div>
+        </div>
     </div>
 
     <div id="history-videos" class="category">
@@ -157,28 +323,43 @@
             <button class="clear-history" onclick="clearPlaybackHistory()">Clear History</button>
         </h2>
         <div class="video-list"></div>
+        <div id="history-loading" class="loading-container" style="display:none;">
+            <div class="loading"></div>
+        </div>
     </div>
 
     <div id="hindi-videos" class="category">
         <h2>Trending Hindi Music</h2>
         <div class="video-list"></div>
+        <div id="hindi-loading" class="loading-container">
+            <div class="loading"></div>
+        </div>
     </div>
 
     <div id="english-videos" class="category">
         <h2>Trending English Music</h2>
         <div class="video-list"></div>
+        <div id="english-loading" class="loading-container">
+            <div class="loading"></div>
+        </div>
     </div>
 
     <div id="punjabi-videos" class="category">
         <h2>Trending Punjabi Music</h2>
         <div class="video-list"></div>
+        <div id="punjabi-loading" class="loading-container">
+            <div class="loading"></div>
+        </div>
     </div>
 </div>
 
 <!-- Floating Draggable Video Player -->
 <div id="floating-player">
-    <button id="close-player">×</button>
     <iframe id="floating-video" allowfullscreen></iframe>
+    <div id="player-controls">
+        <div id="player-title">No video playing</div>
+        <button id="close-player" title="Close player">×</button>
+    </div>
 </div>
 
 <script>
@@ -187,14 +368,17 @@
 <script defer src="/_vercel/insights/script.js"></script>
 
 <script>
+    // Service Worker Registration
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js').then(() => {
             console.log('Service Worker Registered');
+        }).catch(err => {
+            console.error('Service Worker registration failed:', err);
         });
     }
     
     const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
-    const CACHE_NAME = 'orpheus-video-cache';
+    const CACHE_NAME = 'orpheus-video-cache-v2';
     
     const playlists = {
         "hindi-videos": "PL4uUU2x5ZgR1JOlcY9SZB94MW6fBE8ovU",
@@ -209,6 +393,13 @@
             Object.keys(playlists).forEach(containerId => {
                 fetchPlaylistVideos(playlists[containerId], containerId);
             });
+        }).catch(err => {
+            console.error('Cache initialization error:', err);
+            // Fallback - still try to load content
+            displayPlaybackHistory();
+            Object.keys(playlists).forEach(containerId => {
+                fetchPlaylistVideos(playlists[containerId], containerId);
+            });
         });
         
         // Add Enter key support for search
@@ -219,10 +410,13 @@
         });
         
         // Close player button
-        document.getElementById("close-player").addEventListener("click", function() {
-            document.getElementById("floating-player").style.display = "none";
-            document.getElementById("floating-video").src = "";
+        document.getElementById("close-player").addEventListener("click", function(e) {
+            e.stopPropagation();
+            closeFloatingPlayer();
         });
+        
+        // Initialize draggable player
+        initDraggablePlayer();
     });
 
     // Initialize Cache API
@@ -233,6 +427,7 @@
             return cache;
         } catch (error) {
             console.error('Cache initialization failed:', error);
+            throw error;
         }
     }
 
@@ -274,67 +469,124 @@
         const API_URL = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=10&key=${API_KEY}`;
         
         fetch(API_URL)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
             .then(data => {
                 const videoList = document.querySelector(`#${containerId} .video-list`);
+                const loadingElement = document.getElementById(`${containerId}-loading`);
+                
                 videoList.innerHTML = "";
-                data.items.forEach(video => {
-                    const videoId = video.snippet.resourceId.videoId;
-                    const thumbnailUrl = video.snippet.thumbnails?.medium?.url || 
-                                      video.snippet.thumbnails?.default?.url ||
-                                      'https://i.ytimg.com/vi/default.jpg';
-                    
-                    const videoElement = document.createElement("div");
-                    videoElement.classList.add("video");
-                    videoElement.innerHTML = `
-                        <h3>${video.snippet.title}</h3>
-                        <img src="${thumbnailUrl}" class="video-thumbnail" alt="${video.snippet.title}">
-                    `;
-                    videoElement.onclick = () => openFloatingPlayer(
-                        videoId, 
-                        video.snippet.title,
-                        thumbnailUrl
-                    );
-                    videoList.appendChild(videoElement);
-                });
+                
+                if (data.items && data.items.length > 0) {
+                    data.items.forEach(video => {
+                        const videoId = video.snippet.resourceId.videoId;
+                        const thumbnailUrl = getBestThumbnail(video.snippet.thumbnails);
+                        
+                        const videoElement = createVideoElement(
+                            videoId, 
+                            video.snippet.title,
+                            thumbnailUrl,
+                            new Date(video.snippet.publishedAt).toLocaleDateString()
+                        );
+                        
+                        videoList.appendChild(videoElement);
+                    });
+                } else {
+                    videoList.innerHTML = '<p>No videos found in this playlist.</p>';
+                }
+                
+                if (loadingElement) loadingElement.style.display = "none";
             })
-            .catch(error => console.error(`Error fetching videos:`, error));
+            .catch(error => {
+                console.error(`Error fetching ${containerId} videos:`, error);
+                const videoList = document.querySelector(`#${containerId} .video-list`);
+                const loadingElement = document.getElementById(`${containerId}-loading`);
+                
+                videoList.innerHTML = '<p>Failed to load videos. Please try again later.</p>';
+                if (loadingElement) loadingElement.style.display = "none";
+            });
+    }
+
+    function getBestThumbnail(thumbnails) {
+        return thumbnails?.medium?.url || 
+               thumbnails?.high?.url ||
+               thumbnails?.default?.url ||
+               'https://i.ytimg.com/vi/default.jpg';
+    }
+
+    function createVideoElement(videoId, title, thumbnailUrl, date = '') {
+        const videoElement = document.createElement("div");
+        videoElement.classList.add("video");
+        
+        const dateElement = date ? `<p class="timestamp">${date}</p>` : '';
+        
+        videoElement.innerHTML = `
+            <h3 title="${title}">${title}</h3>
+            ${dateElement}
+            <img src="${thumbnailUrl}" class="video-thumbnail" alt="${title}" loading="lazy">
+        `;
+        
+        videoElement.onclick = () => openFloatingPlayer(
+            videoId, 
+            title,
+            thumbnailUrl
+        );
+        
+        return videoElement;
     }
 
     function searchYouTube() {
-        const query = document.getElementById("search-query").value;
-        if (!query) return;
+        const query = document.getElementById("search-query").value.trim();
+        if (!query) {
+            alert("Please enter a search term");
+            return;
+        }
 
-        const API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${API_KEY}`;
+        const API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + " music")}&type=video&maxResults=10&key=${API_KEY}`;
+        
+        const searchResults = document.getElementById("search-results");
+        const videoList = document.querySelector("#search-results .video-list");
+        const loadingElement = document.getElementById("search-loading");
+        
+        searchResults.style.display = "block";
+        videoList.innerHTML = "";
+        loadingElement.style.display = "flex";
         
         fetch(API_URL)
-            .then(response => response.json())
-            .then(data => {
-                const videoList = document.querySelector("#search-results .video-list");
-                videoList.innerHTML = "";
-                document.getElementById("search-results").style.display = "block";
-
-                data.items.forEach(video => {
-                    const videoId = video.id.videoId;
-                    const thumbnailUrl = video.snippet.thumbnails?.medium?.url || 
-                                      video.snippet.thumbnails?.default?.url ||
-                                      'https://i.ytimg.com/vi/default.jpg';
-                    
-                    const videoElement = document.createElement("div");
-                    videoElement.classList.add("video");
-                    videoElement.innerHTML = `
-                        <h3>${video.snippet.title}</h3>
-                        <img src="${thumbnailUrl}" class="video-thumbnail" alt="${video.snippet.title}">
-                    `;
-                    videoElement.onclick = () => openFloatingPlayer(
-                        videoId, 
-                        video.snippet.title,
-                        thumbnailUrl
-                    );
-                    videoList.appendChild(videoElement);
-                });
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
             })
-            .catch(error => console.error("Error fetching search results:", error));
+            .then(data => {
+                videoList.innerHTML = "";
+                
+                if (data.items && data.items.length > 0) {
+                    data.items.forEach(video => {
+                        const videoId = video.id.videoId;
+                        const thumbnailUrl = getBestThumbnail(video.snippet.thumbnails);
+                        
+                        const videoElement = createVideoElement(
+                            videoId, 
+                            video.snippet.title,
+                            thumbnailUrl,
+                            new Date(video.snippet.publishedAt).toLocaleDateString()
+                        );
+                        
+                        videoList.appendChild(videoElement);
+                    });
+                } else {
+                    videoList.innerHTML = '<p>No results found. Try a different search term.</p>';
+                }
+                
+                loadingElement.style.display = "none";
+            })
+            .catch(error => {
+                console.error("Error fetching search results:", error);
+                videoList.innerHTML = '<p>Failed to load search results. Please try again later.</p>';
+                loadingElement.style.display = "none";
+            });
     }
 
     async function openFloatingPlayer(videoId, videoTitle, thumbnailUrl) {
@@ -347,13 +599,30 @@
             timestamp: new Date().toISOString()
         };
         
-        // Save to cache and history
-        await cacheVideoData(videoId, videoData);
-        saveToPlaybackHistory(videoData);
-        
-        // Show player
-        document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoId}`;
-        document.getElementById("floating-player").style.display = "block";
+        try {
+            // Save to cache and history
+            await cacheVideoData(videoId, videoData);
+            saveToPlaybackHistory(videoData);
+            
+            // Show player
+            document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
+            document.getElementById("player-title").textContent = videoTitle;
+            document.getElementById("floating-player").style.display = "block";
+            
+            // Analytics event
+            if (window.va) {
+                window.va('track', 'PlayVideo', { videoId, title: videoTitle });
+            }
+        } catch (error) {
+            console.error('Error opening player:', error);
+            alert('Failed to play video. Please try again.');
+        }
+    }
+    
+    function closeFloatingPlayer() {
+        document.getElementById("floating-player").style.display = "none";
+        document.getElementById("floating-video").src = "";
+        document.getElementById("player-title").textContent = "No video playing";
     }
 
     // Save a video to playback history
@@ -386,67 +655,150 @@
 
     // Clear playback history
     function clearPlaybackHistory() {
-        localStorage.removeItem('playbackHistory');
-        document.querySelector("#history-videos .video-list").innerHTML = "";
+        if (confirm("Are you sure you want to clear your playback history?")) {
+            localStorage.removeItem('playbackHistory');
+            document.querySelector("#history-videos .video-list").innerHTML = 
+                '<p>Your playback history is empty.</p>';
+                
+            // Analytics event
+            if (window.va) {
+                window.va('track', 'ClearHistory');
+            }
+        }
     }
 
     // Display playback history
     async function displayPlaybackHistory() {
         const history = getPlaybackHistory();
         const videoList = document.querySelector("#history-videos .video-list");
+        const loadingElement = document.getElementById("history-loading");
+        
+        loadingElement.style.display = "flex";
         videoList.innerHTML = "";
         
-        for (const video of history) {
-            // Try to get cached data if missing some fields
-            let videoData = video;
-            if (!video.thumbnail || !video.link) {
-                const cachedData = await getCachedVideoData(video.id);
-                if (cachedData) {
-                    videoData = { ...video, ...cachedData };
-                }
-            }
-            
-            const videoElement = document.createElement("div");
-            videoElement.classList.add("video");
-            videoElement.innerHTML = `
-                <h3>${videoData.title}</h3>
-                <p><small>${new Date(videoData.timestamp).toLocaleString()}</small></p>
-                <img src="${videoData.thumbnail}" class="video-thumbnail" alt="${videoData.title}">
-            `;
-            videoElement.onclick = () => {
-                document.getElementById("floating-video").src = `https://www.youtube.com/embed/${videoData.id}`;
-                document.getElementById("floating-player").style.display = "block";
-                // Update timestamp
-                saveToPlaybackHistory({
-                    ...videoData,
-                    timestamp: new Date().toISOString()
-                });
-            };
-            videoList.appendChild(videoElement);
+        if (history.length === 0) {
+            videoList.innerHTML = '<p>Your playback history is empty.</p>';
+            loadingElement.style.display = "none";
+            return;
         }
+        
+        // Process history in chunks to avoid UI freeze
+        const chunkSize = 5;
+        for (let i = 0; i < history.length; i += chunkSize) {
+            const chunk = history.slice(i, i + chunkSize);
+            
+            // Use Promise.all to process chunk in parallel
+            await Promise.all(chunk.map(async (video) => {
+                // Try to get cached data if missing some fields
+                let videoData = video;
+                if (!video.thumbnail || !video.link) {
+                    const cachedData = await getCachedVideoData(video.id);
+                    if (cachedData) {
+                        videoData = { ...video, ...cachedData };
+                    }
+                }
+                
+                const videoElement = createVideoElement(
+                    videoData.id,
+                    videoData.title,
+                    videoData.thumbnail,
+                    new Date(videoData.timestamp).toLocaleString()
+                );
+                
+                // Append to video list
+                videoList.appendChild(videoElement);
+            }));
+            
+            // Small delay between chunks to keep UI responsive
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        loadingElement.style.display = "none";
     }
 
-    // Draggable Floating Player
-    const floatingPlayer = document.getElementById("floating-player");
-    let isDragging = false, offsetX, offsetY;
+    // Initialize draggable player functionality
+    function initDraggablePlayer() {
+        const floatingPlayer = document.getElementById("floating-player");
+        let isDragging = false;
+        let offsetX, offsetY;
+        let startX, startY;
 
-    floatingPlayer.addEventListener("mousedown", (e) => {
-        isDragging = true;
-        offsetX = e.clientX - floatingPlayer.getBoundingClientRect().left;
-        offsetY = e.clientY - floatingPlayer.getBoundingClientRect().top;
-        floatingPlayer.style.cursor = "grabbing";
-    });
+        floatingPlayer.addEventListener("mousedown", (e) => {
+            // Only start drag if clicking on the player, not on buttons or iframe
+            if (e.target === floatingPlayer || e.target.id === "player-controls" || e.target.id === "player-title") {
+                isDragging = true;
+                floatingPlayer.classList.add("active");
+                offsetX = e.clientX - floatingPlayer.getBoundingClientRect().left;
+                offsetY = e.clientY - floatingPlayer.getBoundingClientRect().top;
+                startX = e.clientX;
+                startY = e.clientY;
+                e.preventDefault(); // Prevent text selection
+            }
+        });
 
-    document.addEventListener("mousemove", (e) => {
-        if (!isDragging) return;
-        floatingPlayer.style.left = `${e.clientX - offsetX}px`;
-        floatingPlayer.style.top = `${e.clientY - offsetY}px`;
-    });
+        document.addEventListener("mousemove", (e) => {
+            if (!isDragging) return;
+            
+            const x = e.clientX - offsetX;
+            const y = e.clientY - offsetY;
+            
+            // Constrain to viewport
+            const maxX = window.innerWidth - floatingPlayer.offsetWidth;
+            const maxY = window.innerHeight - floatingPlayer.offsetHeight;
+            
+            floatingPlayer.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+            floatingPlayer.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+        });
 
-    document.addEventListener("mouseup", () => {
-        isDragging = false;
-        floatingPlayer.style.cursor = "grab";
-    });
+        document.addEventListener("mouseup", (e) => {
+            if (!isDragging) return;
+            
+            // Check if this was a click (minimal movement)
+            const dist = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
+            if (dist < 5) {
+                // Treat as click - maybe maximize player in future?
+            }
+            
+            isDragging = false;
+            floatingPlayer.classList.remove("active");
+        });
+
+        // Touch support
+        floatingPlayer.addEventListener("touchstart", (e) => {
+            if (e.target === floatingPlayer || e.target.id === "player-controls" || e.target.id === "player-title") {
+                isDragging = true;
+                floatingPlayer.classList.add("active");
+                const touch = e.touches[0];
+                offsetX = touch.clientX - floatingPlayer.getBoundingClientRect().left;
+                offsetY = touch.clientY - floatingPlayer.getBoundingClientRect().top;
+                startX = touch.clientX;
+                startY = touch.clientY;
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener("touchmove", (e) => {
+            if (!isDragging || !e.touches.length) return;
+            
+            const touch = e.touches[0];
+            const x = touch.clientX - offsetX;
+            const y = touch.clientY - offsetY;
+            
+            // Constrain to viewport
+            const maxX = window.innerWidth - floatingPlayer.offsetWidth;
+            const maxY = window.innerHeight - floatingPlayer.offsetHeight;
+            
+            floatingPlayer.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+            floatingPlayer.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+            
+            e.preventDefault();
+        });
+
+        document.addEventListener("touchend", () => {
+            isDragging = false;
+            floatingPlayer.classList.remove("active");
+        });
+    }
 </script>
 
 </body>
