@@ -403,8 +403,11 @@
         });
     }
     
+    // API Keys
     const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
-    const CACHE_NAME = 'orpheus-video-cache-v3';
+    const GOOGLE_SEARCH_API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
+    const GOOGLE_SEARCH_ENGINE_ID = "974526141789-36ppt1gp0btne6jl41kncuicunc6ssi8.apps.googleusercontent.com";
+    const CACHE_NAME = 'orpheus-video-cache-v4';
     let autoplayEnabled = true;
     let currentVideoId = null;
     
@@ -486,7 +489,50 @@
         }
     }
 
-    // Extract artist/composer from description
+    // Search for artist info using Google Search API
+    async function searchArtistInfo(songTitle) {
+        const API_URL = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(songTitle + " artist")}&key=${GOOGLE_SEARCH_API_KEY}&cx=${GOOGLE_SEARCH_ENGINE_ID}`;
+        
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            
+            if (data.items && data.items.length > 0) {
+                // Analyze the snippet for artist information
+                const snippet = data.items[0].snippet.toLowerCase();
+                
+                // Common patterns in search results
+                const artistPatterns = [
+                    /by\s(.+?)(\.|\,|\;|$)/i,
+                    /artist:\s*(.+?)(\.|\,|\;|$)/i,
+                    /performed by\s*(.+?)(\.|\,|\;|$)/i,
+                    /singer:\s*(.+?)(\.|\,|\;|$)/i,
+                    /(.+?)\s+is the artist/i
+                ];
+                
+                for (const pattern of artistPatterns) {
+                    const match = snippet.match(pattern);
+                    if (match && match[1]) {
+                        return match[1].trim();
+                    }
+                }
+                
+                // Fallback to looking for common artist name patterns
+                const namePattern = /([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,2})/;
+                const nameMatch = snippet.match(namePattern);
+                if (nameMatch) {
+                    return nameMatch[1];
+                }
+            }
+            
+            return null;
+        } catch (error) {
+            console.error("Error searching artist info:", error);
+            return null;
+        }
+    }
+
+    // Extract from description
     function extractFromDescription(description) {
         const patterns = [
             /Artist:\s*(.+)/i,
@@ -551,16 +597,15 @@
         return null;
     }
 
-    // Fetch additional video details including description
-    async function fetchVideoDetails(videoId) {
-        const API_URL = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
-        
+    // Fetch video details with enhanced artist detection
+    async function fetchVideoDetails(videoId, title) {
         try {
+            // First try to get from YouTube API
+            const API_URL = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
             const response = await fetch(API_URL);
             const data = await response.json();
             const snippet = data.items[0].snippet;
             
-            // Extract from title (fallback)
             let artist = extractFromTitle(snippet.title);
             let composer = 'Unknown Composer';
             
@@ -571,6 +616,14 @@
                 
                 const descComposer = extractComposerFromDescription(snippet.description);
                 if (descComposer) composer = descComposer;
+            }
+            
+            // If still not found, use Google Search
+            if (!artist || artist === 'Unknown Artist') {
+                const searchedArtist = await searchArtistInfo(snippet.title);
+                if (searchedArtist) {
+                    artist = searchedArtist;
+                }
             }
             
             return { 
@@ -587,17 +640,18 @@
         }
     }
 
-    // Cache video data with artist/composer info
+    // Cache video data with enhanced artist info
     async function cacheVideoData(videoId, videoData) {
         try {
-            // First fetch additional video details
-            const details = await fetchVideoDetails(videoId);
+            // First fetch additional video details with enhanced search
+            const details = await fetchVideoDetails(videoId, videoData.title);
             
             const enhancedData = {
                 ...videoData,
                 artist: details.artist,
                 composer: details.composer,
-                description: details.description
+                description: details.description,
+                lastUpdated: new Date().toISOString()
             };
             
             const cache = await caches.open(CACHE_NAME);
@@ -634,7 +688,7 @@
         try {
             // Get current video details
             const currentVideo = await getCachedVideoData(currentVideoId);
-            if (!currentVideo) return null;
+            if (!currentVideo || currentVideo.artist === 'Unknown Artist') return null;
             
             // Get playback history
             const history = getPlaybackHistory();
@@ -647,14 +701,8 @@
                 const fullVideoData = await getCachedVideoData(video.id);
                 
                 if (fullVideoData && fullVideoData.id !== currentVideoId) {
-                    // Check if the field matches (case insensitive)
-                    const currentField = currentVideo[byField].toLowerCase();
-                    const compareField = fullVideoData[byField].toLowerCase();
-                    
-                    // Basic similarity check
-                    if (compareField.includes(currentField) || 
-                        currentField.includes(compareField) ||
-                        compareField === currentField) {
+                    // Enhanced similarity check with fuzzy matching
+                    if (isSimilarArtist(fullVideoData[byField], currentVideo[byField])) {
                         similarVideos.push(fullVideoData);
                     }
                 }
@@ -667,33 +715,67 @@
         }
     }
 
-    // Create video element with artist/composer info
+    // Enhanced artist similarity check
+    function isSimilarArtist(artist1, artist2) {
+        if (!artist1 || !artist2) return false;
+        
+        const a1 = artist1.toLowerCase().trim();
+        const a2 = artist2.toLowerCase().trim();
+        
+        // Exact match
+        if (a1 === a2) return true;
+        
+        // One is contained in the other
+        if (a1.includes(a2)) return true;
+        if (a2.includes(a1)) return true;
+        
+        // Common name variations (e.g., "The Beatles" vs "Beatles")
+        if (a1.replace('the ', '') === a2.replace('the ', '')) return true;
+        
+        // Initials match (e.g., "BTS" vs "Bangtan Boys")
+        const a1Initials = a1.split(' ').map(n => n[0]).join('');
+        const a2Initials = a2.split(' ').map(n => n[0]).join('');
+        if (a1Initials === a2Initials && a1Initials.length > 1) return true;
+        
+        return false;
+    }
+
+    // Create video element with artist info
     function createVideoElement(videoId, title, thumbnailUrl, date = '', artist = '', composer = '') {
         const videoElement = document.createElement("div");
         videoElement.classList.add("video");
         
         const dateElement = date ? `<p class="timestamp">${date}</p>` : '';
-        const artistElement = artist ? `<p class="artist">Artist: ${artist}</p>` : '';
-        const composerElement = composer ? `<p class="composer">Composer: ${composer}</p>` : '';
+        const artistElement = artist ? `<p class="artist">${artist}</p>` : '';
         
         videoElement.innerHTML = `
             <h3 title="${title}">${title}</h3>
             ${artistElement}
-            ${composerElement}
             ${dateElement}
             <img src="${thumbnailUrl}" class="video-thumbnail" alt="${title}" loading="lazy">
         `;
         
         videoElement.onclick = async () => {
-            const videoData = await getCachedVideoData(videoId) || {
-                id: videoId,
-                title: title,
-                thumbnail: thumbnailUrl,
-                link: `https://www.youtube.com/watch?v=${videoId}`,
-                timestamp: new Date().toISOString(),
-                artist: 'Unknown Artist',
-                composer: 'Unknown Composer'
-            };
+            // First try to get cached data
+            let videoData = await getCachedVideoData(videoId);
+            
+            if (!videoData) {
+                // If not cached, create basic data and fetch details
+                videoData = {
+                    id: videoId,
+                    title: title,
+                    thumbnail: thumbnailUrl,
+                    link: `https://www.youtube.com/watch?v=${videoId}`,
+                    timestamp: new Date().toISOString(),
+                    artist: 'Unknown Artist',
+                    composer: 'Unknown Composer'
+                };
+                
+                // Fetch and cache enhanced data
+                await cacheVideoData(videoId, videoData);
+                videoData = await getCachedVideoData(videoId) || videoData;
+            }
+            
             openFloatingPlayer(videoData);
         };
         
