@@ -27,6 +27,15 @@
       background-color: #0056b3;
     }
   </style>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-JST9W4T80T"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-JST9W4T80T');
+</script>
 </head>
  
 <body>
@@ -58,6 +67,15 @@
       }
       installBtn.style.display = 'none';
       deferredPrompt = null;
+    });
+
+    // Track successful PWA install in Google Analytics
+    window.addEventListener('appinstalled', () => {
+      console.log('PWA installed');
+      gtag('event', 'pwa_install', {
+        event_category: 'engagement',
+        event_label: 'User Installed the App'
+      });
     });
 
     // Optional: Register service worker if needed
