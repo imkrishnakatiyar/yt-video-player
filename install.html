@@ -26,6 +26,19 @@
     #installBtn:hover {
       background-color: #0056b3;
     }
+#progressContainer {
+  background-color: #333;
+  border-radius: 5px;
+  overflow: hidden;
+  height: 10px;
+  margin-top: 1em;
+}
+#progressBar {
+  width: 0%;
+  height: 100%;
+  background-color: #00FFAA;
+  transition: width 0.3s ease;
+}
   </style>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-JST9W4T80T"></script>
@@ -43,7 +56,9 @@
   <h2>Install Our App</h2>
   
   <button id="installBtn">Install App</button>
-
+<div id="progressContainer" style="display:none; width: 100%; max-width: 300px; margin: 1em auto;">
+  <div id="progressBar" style="width: 0%; height: 10px; background: #00FFAA; border-radius: 5px;"></div>
+</div>
   <script>
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
@@ -56,7 +71,7 @@
     });
 
     // Click handler
-    installBtn.addEventListener('click', async () => {
+   /* installBtn.addEventListener('click', async () => {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
@@ -75,7 +90,38 @@
       gtag('event', 'pwa_install', {
         event_category: 'engagement',
         event_label: 'User Installed the App'
+      });*/
+installBtn.addEventListener('click', () => {
+  if (!deferredPrompt) return;
+
+  // Show progress container
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+  progressContainer.style.display = 'block';
+
+  let progress = 0;
+  const interval = setInterval(() => {
+    progress += 5;
+    progressBar.style.width = progress + '%';
+
+    if (progress >= 100) {
+      clearInterval(interval);
+      deferredPrompt.prompt();
+
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+        } else {
+          console.log('User dismissed the install prompt');
+        }
+
+        installBtn.style.display = 'none';
+        progressContainer.style.display = 'none';
+        deferredPrompt = null;
       });
+    }
+  }, 100); // 100ms interval = ~2 seconds total
+});
     });
 
     // Optional: Register service worker if needed
