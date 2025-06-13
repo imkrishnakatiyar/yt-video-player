@@ -6,6 +6,7 @@ self.addEventListener('install', (event) => {
                 '/index.html',
                 '/manifest.json',
                 '/service-worker.js',
+'/install.html',
             ]);
         })
     );
