@@ -507,7 +507,7 @@ function initDraggablePlayer() {
 
 // Playback History Functions
 function saveToPlaybackHistory(videoData) {
-    let history = JSON.parse(localStorage.getItem('playbackHistory') || [];
+    let history = JSON.parse(localStorage.getItem('playbackHistory')) || [];
     history = [videoData, ...history].slice(0, 50); // Keep only 50 most recent
     localStorage.setItem('playbackHistory', JSON.stringify(history));
 }
