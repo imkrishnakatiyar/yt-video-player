@@ -406,6 +406,141 @@
 <script defer src="/_vercel/insights/script.js"></script>
 
 <script>
+    // ====== ADD THESE FUNCTIONS TO YOUR SCRIPT ======
+
+// Initialize Cache
+async function initializeCache() {
+    try {
+        const cache = await caches.open(CACHE_NAME);
+        console.log('Cache initialized');
+        return cache;
+    } catch (error) {
+        console.error('Cache initialization failed:', error);
+        throw error;
+    }
+}
+
+// Search YouTube Function
+function searchYouTube() {
+    const query = document.getElementById("search-query").value.trim();
+    if (!query) {
+        alert("Please enter a search term");
+        return;
+    }
+
+    const API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + " music")}&type=video&maxResults=10&key=${API_KEY}`;
+    
+    const searchResults = document.getElementById("search-results");
+    const videoList = document.querySelector("#search-results .video-list");
+    const loadingElement = document.getElementById("search-loading");
+    
+    searchResults.style.display = "block";
+    videoList.innerHTML = "";
+    loadingElement.style.display = "flex";
+    
+    fetch(API_URL)
+        .then(response => response.json())
+        .then(data => {
+            videoList.innerHTML = "";
+            
+            if (data.items?.length > 0) {
+                data.items.forEach(video => {
+                    const videoId = video.id.videoId;
+                    const thumbnailUrl = video.snippet.thumbnails?.medium?.url || 
+                                        video.snippet.thumbnails?.default?.url;
+                    
+                    const videoElement = createVideoElement(
+                        videoId, 
+                        video.snippet.title,
+                        thumbnailUrl
+                    );
+                    videoList.appendChild(videoElement);
+                });
+            } else {
+                videoList.innerHTML = '<p>No results found</p>';
+            }
+            loadingElement.style.display = "none";
+        })
+        .catch(error => {
+            console.error("Search error:", error);
+            videoList.innerHTML = '<p>Error loading results</p>';
+            loadingElement.style.display = "none";
+        });
+}
+
+// Create Video Element Helper
+function createVideoElement(videoId, title, thumbnailUrl) {
+    const element = document.createElement('div');
+    element.className = 'video';
+    element.innerHTML = `
+        <h3>${title}</h3>
+        <img src="${thumbnailUrl}" class="video-thumbnail" alt="${title}">
+    `;
+    element.onclick = () => {
+        document.getElementById('floating-video').src = `https://www.youtube.com/embed/${videoId}`;
+        document.getElementById('floating-player').style.display = 'block';
+    };
+    return element;
+}
+
+// Initialize Draggable Player
+function initDraggablePlayer() {
+    const player = document.getElementById('floating-player');
+    let isDragging = false;
+    
+    player.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        player.style.cursor = 'grabbing';
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        player.style.left = `${e.clientX - player.offsetWidth/2}px`;
+        player.style.top = `${e.clientY - 30}px`;
+    });
+    
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        player.style.cursor = 'grab';
+    });
+}
+
+// Playback History Functions
+function saveToPlaybackHistory(videoData) {
+    let history = JSON.parse(localStorage.getItem('playbackHistory') || [];
+    history = [videoData, ...history].slice(0, 50); // Keep only 50 most recent
+    localStorage.setItem('playbackHistory', JSON.stringify(history));
+}
+
+function displayPlaybackHistory() {
+    const history = JSON.parse(localStorage.getItem('playbackHistory') || []);
+    const container = document.querySelector('#history-videos .video-list');
+    
+    container.innerHTML = '';
+    history.forEach(item => {
+        const element = createVideoElement(item.id, item.title, item.thumbnail);
+        container.appendChild(element);
+    });
+}
+
+function clearPlaybackHistory() {
+    localStorage.removeItem('playbackHistory');
+    displayPlaybackHistory();
+}
+
+// Toggle Autoplay
+function toggleAutoplay() {
+    autoplayEnabled = !autoplayEnabled;
+    document.getElementById('autoplay-toggle').textContent = 
+        `Autoplay: ${autoplayEnabled ? 'ON' : 'OFF'}`;
+    localStorage.setItem('autoplayEnabled', autoplayEnabled);
+}
+
+// Close Player
+function closeFloatingPlayer() {
+    document.getElementById('floating-player').style.display = 'none';
+    document.getElementById('floating-video').src = '';
+}
     // Service Worker Registration
    /* if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js').then(() => {
