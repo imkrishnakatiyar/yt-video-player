@@ -171,7 +171,7 @@
     
     <div class="search-bar">
         <input type="text" id="search-query" placeholder="Search for music videos..." autocomplete="off">
-        <button onclick="searchYouTube()">Search</button>
+        <button id="search-button">Search</button>
     </div>
 
     <div id="search-results" class="category" style="display:none;">
@@ -218,7 +218,8 @@
         "punjabi-videos": "PLFFyMei_d85U5RQdXjRQ5F012qr4vSmSa"
     };
 
-    document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the application
+    function initApp() {
         displayPlaybackHistory();
         
         // Load playlist videos
@@ -226,18 +227,16 @@
             fetchPlaylistVideos(playlists[containerId], containerId);
         });
         
-        // Search on Enter key
+        // Setup event listeners
+        document.getElementById("search-button").addEventListener("click", searchYouTube);
         document.getElementById("search-query").addEventListener("keyup", function(event) {
             if (event.key === "Enter") {
                 searchYouTube();
             }
         });
         
-        // Close player button
-        document.getElementById("close-player").addEventListener("click", function() {
-            closeFloatingPlayer();
-        });
-    });
+        document.getElementById("close-player").addEventListener("click", closeFloatingPlayer);
+    }
 
     function createVideoElement(videoId, title, thumbnailUrl) {
         const videoElement = document.createElement("div");
@@ -248,13 +247,13 @@
             <img src="${thumbnailUrl}" class="video-thumbnail" alt="${title}" loading="lazy">
         `;
         
-        videoElement.onclick = function() {
+        videoElement.addEventListener("click", function() {
             openFloatingPlayer({
                 id: videoId,
                 title: title,
                 thumbnail: thumbnailUrl
             });
-        };
+        });
         
         return videoElement;
     }
@@ -315,17 +314,22 @@
         const API_URL = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=10&key=${API_KEY}`;
         
         fetch(API_URL)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
             .then(data => {
                 const videoList = document.querySelector(`#${containerId} .video-list`);
                 videoList.innerHTML = "";
                 
                 if (data.items && data.items.length > 0) {
                     data.items.forEach(video => {
+                        const thumbnailUrl = video.snippet.thumbnails.medium?.url || 
+                                           video.snippet.thumbnails.default.url;
                         const videoElement = createVideoElement(
                             video.snippet.resourceId.videoId, 
                             video.snippet.title,
-                            video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default.url
+                            thumbnailUrl
                         );
                         videoList.appendChild(videoElement);
                     });
@@ -342,7 +346,10 @@
 
     function searchYouTube() {
         const query = document.getElementById("search-query").value.trim();
-        if (!query) return;
+        if (!query) {
+            alert("Please enter a search term");
+            return;
+        }
 
         const API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + " music")}&type=video&maxResults=10&key=${API_KEY}`;
         
@@ -353,28 +360,36 @@
         videoList.innerHTML = "Loading...";
         
         fetch(API_URL)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
             .then(data => {
                 videoList.innerHTML = "";
                 
                 if (data.items && data.items.length > 0) {
                     data.items.forEach(video => {
+                        const thumbnailUrl = video.snippet.thumbnails.medium?.url || 
+                                           video.snippet.thumbnails.default.url;
                         const videoElement = createVideoElement(
                             video.id.videoId, 
                             video.snippet.title,
-                            video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default.url
+                            thumbnailUrl
                         );
                         videoList.appendChild(videoElement);
                     });
                 } else {
-                    videoList.innerHTML = '<p>No results found.</p>';
+                    videoList.innerHTML = '<p>No results found. Try a different search term.</p>';
                 }
             })
             .catch(error => {
-                console.error("Error searching:", error);
-                videoList.innerHTML = '<p>Search failed. Please try again.</p>';
+                console.error("Error fetching search results:", error);
+                videoList.innerHTML = '<p>Failed to load search results. Please try again later.</p>';
             });
     }
+
+    // Start the application when DOM is loaded
+    document.addEventListener("DOMContentLoaded", initApp);
 </script>
 </body>
 </html>
