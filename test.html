@@ -275,7 +275,7 @@
 
     function saveToPlaybackHistory(videoData) {
         let history = JSON.parse(localStorage.getItem('playbackHistory') || [];
-        
+        )
         // Remove if already exists
         history = history.filter(v => v.id !== videoData.id);
         
