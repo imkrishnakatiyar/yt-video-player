@@ -323,6 +323,29 @@
                 right: 5%;
                 bottom: 10px;
             }
+
+.exit-container {
+  text-align: center;
+}
+
+.exit-button {
+  display: inline-block;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  background-color: #e74c3c;
+  border: none;
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.exit-button:hover {
+  background-color: #c0392b;
+  transform: scale(1.05);
+}
         }
     </style>
 </head>
@@ -332,7 +355,12 @@
     <h1>Orpheus Music</h1>
     <a href="index1.html" style="color: var(--primary-color); text-decoration: none;">← Switch to old version</a>
  <a href="install.html" style="color: var(--primary-color); text-decoration: none;">   install app →</a>
-	
+ 
+
+  <div class="exit-container">
+    <a href="https://www.example.com" class="exit-button">Exit</a>
+  </div>
+
     <div class="search-bar">
         <input type="text" id="search-query" placeholder="Search for music videos..." autocomplete="off">
         <button onclick="searchYouTube()">Search</button>
@@ -409,8 +437,7 @@
     
     // API Keys
     const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
-    const GOOGLE_SEARCH_API_KEY = "AIzaSyDCnxH-bjMrnsea-Y5S_UVB6H-ftSLrT-8";
-    const GOOGLE_SEARCH_ENGINE_ID = "7338be81bdf7044bf";
+    
     const CACHE_NAME = 'orpheus-video-cache-v5' ;
     let autoplayEnabled = true;
     let currentVideoId = null;
