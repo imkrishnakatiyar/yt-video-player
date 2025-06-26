@@ -420,7 +420,7 @@
         <button id="close-player" title="Close player">×</button>
     </div>
 </div>
-
+<button id="history-autoplay-toggle" title="Toggle history autoplay">History Autoplay: ON</button>
 <script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
 </script>
@@ -850,24 +850,33 @@
     }
 
     // YouTube player state change handler
-    window.onPlayerStateChange = async function(event) {
-        // When video ends (state = 0)
-        if (event.data === 0 && autoplayEnabled && currentVideoId) {
-            const similarSongs = await findSimilarSongs(currentVideoId);
+    // Modify the player state change handler
+window.onPlayerStateChange = async function(event) {
+    // When video ends (state = 0)
+    if (event.data === 0 && autoplayEnabled && currentVideoId) {
+        // First try similar songs
+        const similarSongs = await findSimilarSongs(currentVideoId);
+        
+        if (similarSongs && similarSongs.length > 0) {
+            // Sort by most recently played
+            similarSongs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             
-            if (similarSongs && similarSongs.length > 0) {
-                // Sort by most recently played
-                similarSongs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
-                // Play the most recent similar song
-                const nextVideo = similarSongs[0];
+            // Play the most recent similar song
+            const nextVideo = similarSongs[0];
+            openFloatingPlayer(nextVideo);
+            
+            // Notification
+            showNotification(`Now playing: ${nextVideo.title} by ${nextVideo.artist}`);
+        } else {
+            // If no similar songs, play next from history
+            const nextVideo = getNextHistoryVideo(currentVideoId);
+            if (nextVideo) {
                 openFloatingPlayer(nextVideo);
-                
-                // Notification
-                showNotification(`Now playing: ${nextVideo.title} by ${nextVideo.artist}`);
+                showNotification(`Now playing from history: ${nextVideo.title}`);
             }
         }
-    };
+    }
+};
 
     // Show notification
     function showNotification(message) {
@@ -883,12 +892,21 @@
     }
 
     // Close floating player
-    function closeFloatingPlayer() {
-        document.getElementById("floating-player").style.display = "none";
-        document.getElementById("floating-video").src = "";
-        document.getElementById("player-title").textContent = "No video playing";
-        currentVideoId = null;
+   // Modify the close floating player function
+function closeFloatingPlayer() {
+    if (historyAutoplayEnabled) {
+        const nextVideo = getNextHistoryVideo(currentVideoId);
+        if (nextVideo) {
+            openFloatingPlayer(nextVideo);
+            return; // Don't close if we're playing next video
+        }
     }
+    
+    document.getElementById("floating-player").style.display = "none";
+    document.getElementById("floating-video").src = "";
+    document.getElementById("player-title").textContent = "No video playing";
+    currentVideoId = null;
+}
 
     // Save to playback history
     function saveToPlaybackHistory(videoData) {
@@ -1161,6 +1179,50 @@
                 loadingElement.style.display = "none";
             });
     }
+    // Add this function to get the next video from history
+function getNextHistoryVideo(currentVideoId) {
+    const history = getPlaybackHistory();
+    if (history.length === 0) return null;
+    
+    // If no current video, return the first in history
+    if (!currentVideoId) return history[0];
+    
+    // Find current video index
+    const currentIndex = history.findIndex(v => v.id === currentVideoId);
+    
+    // If not found or last in array, return first video
+    if (currentIndex === -1 || currentIndex === history.length - 1) {
+        return history[0];
+    }
+    
+    // Otherwise return next video
+    return history[currentIndex + 1];
+}
+    // Add these variables near the top with other settings
+let historyAutoplayEnabled = true;
+
+// Add this function to toggle history autoplay
+function toggleHistoryAutoplay() {
+    historyAutoplayEnabled = !historyAutoplayEnabled;
+    document.getElementById('history-autoplay-toggle').textContent = 
+        `History Autoplay: ${historyAutoplayEnabled ? 'ON' : 'OFF'}`;
+    
+    // Save preference to localStorage
+    localStorage.setItem('historyAutoplayEnabled', historyAutoplayEnabled);
+}
+
+// Add this to the DOMContentLoaded event listener:
+document.getElementById("history-autoplay-toggle").addEventListener("click", function(e) {
+    e.stopPropagation();
+    toggleHistoryAutoplay();
+});
+
+// And load the preference at startup:
+if (localStorage.getItem('historyAutoplayEnabled') !== null) {
+    historyAutoplayEnabled = localStorage.getItem('historyAutoplayEnabled') === 'true';
+    document.getElementById('history-autoplay-toggle').textContent = 
+        `History Autoplay: ${historyAutoplayEnabled ? 'ON' : 'OFF'}`;
+}
 </script>
 
 </body>
