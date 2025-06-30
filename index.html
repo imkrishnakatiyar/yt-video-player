@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orpheus Music Player</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8710947218183957"
-     crossorigin="anonymous"></script>
     <style>
         :root {
             --primary-color: #FFFFFF;
@@ -150,21 +148,21 @@
             opacity: 0.9;
         }
 
-        /* Artist/Composer styles */
-        .artist, .composer {
+        .artist {
             margin: 5px 0;
             font-size: 14px;
-            color: #aaa;
+            color: var(--primary-color);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .artist {
-            color: var(--primary-color);
+        .timestamp {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
         }
 
-        /* Floating Draggable Video Player */
         #floating-player {
             position: fixed;
             bottom: 20px;
@@ -259,12 +257,6 @@
             background-color: #ff6666;
         }
 
-        .timestamp {
-            font-size: 12px;
-            color: #aaa;
-            margin-top: 5px;
-        }
-
         .loading {
             display: inline-block;
             width: 20px;
@@ -285,7 +277,6 @@
             padding: 20px;
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .container {
                 max-width: 95%;
@@ -307,11 +298,6 @@
             #floating-video {
                 height: 160px;
             }
-            
-            #autoplay-toggle, #history-autoplay-toggle {
-                padding: 3px 6px;
-                font-size: 10px;
-            }
         }
 
         @media (max-width: 480px) {
@@ -328,62 +314,13 @@
                 right: 5%;
                 bottom: 10px;
             }
-            
-            #player-controls {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            
-            #autoplay-toggle, #history-autoplay-toggle {
-                margin: 2px;
-                font-size: 9px;
-            }
-            
-            #player-title {
-                order: -1;
-                width: 100%;
-                text-align: center;
-                margin-bottom: 5px;
-            }
-        }
-
-        .exit-container {
-          text-align: center;
-        }
-
-        .exit-button {
-          display: inline-block;
-          padding: 12px 24px;
-          font-size: 16px;
-          font-weight: bold;
-          color: #fff;
-          background-color: #e74c3c;
-          border: none;
-          border-radius: 8px;
-          text-decoration: none;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-          transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-
-        .exit-button:hover {
-          background-color: #c0392b;
-          transform: scale(1.05);
         }
     </style>
-    <script type='text/javascript' src='//pl27008680.profitableratecpm.com/b4/4c/ce/b44ccec2ff1efce6229b6f7b7c6c9b19.js'></script>
 </head>
 <body>
 
 <div class="container">
     <h1>Orpheus Music</h1>
-    <a href="index1.html" style="color: var(--primary-color); text-decoration: none;">← Switch to old version</a>
-    <a href="install.html" style="color: var(--primary-color); text-decoration: none;">   install app →</a>
- 
-
-  <div class="exit-container">
-    <a href="https://www.profitableratecpm.com/n74sudqr?key=0a761360211e9d54e247272a6c2f275f" class="exit-button">Exit</a>
-  </div>
-
     <div class="search-bar">
         <input type="text" id="search-query" placeholder="Search for music videos..." autocomplete="on">
         <button onclick="searchYouTube()">Search</button>
@@ -406,6 +343,7 @@
             <div class="loading"></div>
         </div>
     </div>
+    
     <div id="hindi-videos" class="category">
         <h2>Trending Hindi Music</h2>
         <div class="video-list"></div>
@@ -413,8 +351,7 @@
             <div class="loading"></div>
         </div>
     </div>
-<script async="async" data-cfasync="false" src="//pl26903411.profitableratecpm.com/266a0fc63b4b065aec80fab56cbb1463/invoke.js"></script>
-<div id="container-266a0fc63b4b065aec80fab56cbb1463"></div>
+
     <div id="english-videos" class="category">
         <h2>Trending English Music</h2>
         <div class="video-list"></div>
@@ -422,8 +359,7 @@
             <div class="loading"></div>
         </div>
     </div>
-<script async="async" data-cfasync="false" src="//pl26903411.profitableratecpm.com/266a0fc63b4b065aec80fab56cbb1463/invoke.js"></script>
-<div id="container-266a0fc63b4b065aec80fab56cbb1463"></div>
+
     <div id="punjabi-videos" class="category">
         <h2>Trending Punjabi Music</h2>
         <div class="video-list"></div>
@@ -433,7 +369,6 @@
     </div>
 </div>
 
-<!-- Floating Draggable Video Player -->
 <div id="floating-player">
     <iframe id="floating-video" allowfullscreen></iframe>
     <div id="player-controls">
@@ -445,11 +380,6 @@
 </div>
 
 <script>
-  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-</script>
-<script defer src="/_vercel/insights/script.js"></script>
-
-<script>
     // Service Worker Registration
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js').then(() => {
@@ -459,7 +389,7 @@
         });
     }
     
-    // API Keys
+    // API Key
     const API_KEY = "AIzaSyAB5ZP3jnLtjz3IPRRrCe66yElwAJh8TsY";
     
     const CACHE_NAME = 'orpheus-video-cache-v5';
@@ -473,7 +403,6 @@
         "punjabi-videos": "PLFFyMei_d85U5RQdXjRQ5F012qr4vSmSa"
     };
 
-    // Initialize the page
     document.addEventListener('DOMContentLoaded', function() {
         // Load preferences
         if (localStorage.getItem('autoplayEnabled') !== null) {
@@ -535,47 +464,35 @@
         initDraggablePlayer();
     });
 
-    // Toggle autoplay function
     function toggleAutoplay() {
         autoplayEnabled = !autoplayEnabled;
         document.getElementById('autoplay-toggle').textContent = 
             `Autoplay: ${autoplayEnabled ? 'ON' : 'OFF'}`;
-        
-        // Save preference to localStorage
         localStorage.setItem('autoplayEnabled', autoplayEnabled);
     }
 
-    // Toggle history autoplay function
     function toggleHistoryAutoplay() {
         historyAutoplayEnabled = !historyAutoplayEnabled;
         document.getElementById('history-autoplay-toggle').textContent = 
             `History Autoplay: ${historyAutoplayEnabled ? 'ON' : 'OFF'}`;
-        
-        // Save preference to localStorage
         localStorage.setItem('historyAutoplayEnabled', historyAutoplayEnabled);
     }
 
-    // Get next video from history
     function getNextHistoryVideo(currentVideoId) {
         const history = getPlaybackHistory();
         if (history.length === 0) return null;
         
-        // If no current video, return the first in history
         if (!currentVideoId) return history[0];
         
-        // Find current video index
         const currentIndex = history.findIndex(v => v.id === currentVideoId);
         
-        // If not found or last in array, return first video
         if (currentIndex === -1 || currentIndex === history.length - 1) {
             return history[0];
         }
         
-        // Otherwise return next video
         return history[currentIndex + 1];
     }
 
-    // Initialize Cache API
     async function initializeCache() {
         try {
             const cache = await caches.open(CACHE_NAME);
@@ -587,50 +504,6 @@
         }
     }
 
-    // Search for artist info using Google Search API
-    async function searchArtistInfo(songTitle) {
-        const API_URL = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(songTitle + " artist")}&key=${GOOGLE_SEARCH_API_KEY}&cx=${GOOGLE_SEARCH_ENGINE_ID}`;
-        
-        try {
-            const response = await fetch(API_URL);
-            const data = await response.json();
-            
-            if (data.items && data.items.length > 0) {
-                // Analyze the snippet for artist information
-                const snippet = data.items[0].snippet.toLowerCase();
-                
-                // Common patterns in search results
-                const artistPatterns = [
-                    /by\s(.+?)(\.|\,|\;|$)/i,
-                    /artist:\s*(.+?)(\.|\,|\;|$)/i,
-                    /performed by\s*(.+?)(\.|\,|\;|$)/i,
-                    /singer:\s*(.+?)(\.|\,|\;|$)/i,
-                    /(.+?)\s+is the artist/i
-                ];
-                
-                for (const pattern of artistPatterns) {
-                    const match = snippet.match(pattern);
-                    if (match && match[1]) {
-                        return match[1].trim();
-                    }
-                }
-                
-                // Fallback to looking for common artist name patterns
-                const namePattern = /([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,2})/;
-                const nameMatch = snippet.match(namePattern);
-                if (nameMatch) {
-                    return nameMatch[1];
-                }
-            }
-            
-            return null;
-        } catch (error) {
-            console.error("Error searching artist info:", error);
-            return null;
-        }
-    }
-
-    // Extract from description
     function extractFromDescription(description) {
         const patterns = [
             /Artist:\s*(.+)/i,
@@ -695,10 +568,8 @@
         return null;
     }
 
-    // Fetch video details with enhanced artist detection
     async function fetchVideoDetails(videoId, title) {
         try {
-            // First try to get from YouTube API
             const API_URL = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
             const response = await fetch(API_URL);
             const data = await response.json();
@@ -707,21 +578,12 @@
             let artist = extractFromTitle(snippet.title);
             let composer = 'Unknown Composer';
             
-            // Try to extract from description
             if (snippet.description) {
                 const descArtist = extractFromDescription(snippet.description);
                 if (descArtist) artist = descArtist;
                 
                 const descComposer = extractComposerFromDescription(snippet.description);
                 if (descComposer) composer = descComposer;
-            }
-            
-            // If still not found, use Google Search
-            if (!artist || artist === 'Unknown Artist') {
-                const searchedArtist = await searchArtistInfo(snippet.title);
-                if (searchedArtist) {
-                    artist = searchedArtist;
-                }
             }
             
             return { 
@@ -738,10 +600,8 @@
         }
     }
 
-    // Cache video data with enhanced artist info
     async function cacheVideoData(videoId, videoData) {
         try {
-            // First fetch additional video details with enhanced search
             const details = await fetchVideoDetails(videoId, videoData.title);
             
             const enhancedData = {
@@ -763,7 +623,6 @@
         }
     }
 
-    // Get cached video data
     async function getCachedVideoData(videoId) {
         try {
             const cache = await caches.open(CACHE_NAME);
@@ -781,25 +640,18 @@
         }
     }
 
-    // Find similar songs by artist or composer
     async function findSimilarSongs(currentVideoId, byField = 'artist') {
         try {
-            // Get current video details
             const currentVideo = await getCachedVideoData(currentVideoId);
             if (!currentVideo || currentVideo.artist === 'Unknown Artist') return null;
             
-            // Get playback history
             const history = getPlaybackHistory();
-            
-            // Find videos by the same artist/composer
             const similarVideos = [];
             
             for (const video of history) {
-                // Get full video data from cache
                 const fullVideoData = await getCachedVideoData(video.id);
                 
                 if (fullVideoData && fullVideoData.id !== currentVideoId) {
-                    // Enhanced similarity check with fuzzy matching
                     if (isSimilarArtist(fullVideoData[byField], currentVideo[byField])) {
                         similarVideos.push(fullVideoData);
                     }
@@ -813,24 +665,17 @@
         }
     }
 
-    // Enhanced artist similarity check
     function isSimilarArtist(artist1, artist2) {
         if (!artist1 || !artist2) return false;
         
         const a1 = artist1.toLowerCase().trim();
         const a2 = artist2.toLowerCase().trim();
         
-        // Exact match
         if (a1 === a2) return true;
-        
-        // One is contained in the other
         if (a1.includes(a2)) return true;
         if (a2.includes(a1)) return true;
-        
-        // Common name variations (e.g., "The Beatles" vs "Beatles")
         if (a1.replace('the ', '') === a2.replace('the ', '')) return true;
         
-        // Initials match (e.g., "BTS" vs "Bangtan Boys")
         const a1Initials = a1.split(' ').map(n => n[0]).join('');
         const a2Initials = a2.split(' ').map(n => n[0]).join('');
         if (a1Initials === a2Initials && a1Initials.length > 1) return true;
@@ -838,8 +683,7 @@
         return false;
     }
 
-    // Create video element with artist info
-    function createVideoElement(videoId, title, thumbnailUrl, date = '', artist = '', composer = '') {
+    function createVideoElement(videoId, title, thumbnailUrl, date = '', artist = '') {
         const videoElement = document.createElement("div");
         videoElement.classList.add("video");
         
@@ -854,11 +698,9 @@
         `;
         
         videoElement.onclick = async () => {
-            // First try to get cached data
             let videoData = await getCachedVideoData(videoId);
             
             if (!videoData) {
-                // If not cached, create basic data and fetch details
                 videoData = {
                     id: videoId,
                     title: title,
@@ -869,7 +711,6 @@
                     composer: 'Unknown Composer'
                 };
                 
-                // Fetch and cache enhanced data
                 await cacheVideoData(videoId, videoData);
                 videoData = await getCachedVideoData(videoId) || videoData;
             }
@@ -880,60 +721,37 @@
         return videoElement;
     }
 
-    // Open floating player with enhanced functionality
     async function openFloatingPlayer(videoData) {
         currentVideoId = videoData.id;
         
         try {
-            // Save to cache and history
             await cacheVideoData(videoData.id, videoData);
             saveToPlaybackHistory(videoData);
             
-            // Show player
             const iframe = document.getElementById("floating-video");
             iframe.src = `https://www.youtube.com/embed/${videoData.id}?autoplay=1&enablejsapi=1`;
             document.getElementById("player-title").textContent = videoData.title;
             document.getElementById("floating-player").style.display = "block";
             
-            // Setup YouTube API listener
             iframe.onload = function() {
                 this.contentWindow.postMessage('{"event":"command","func":"addEventListener","args":["onStateChange","onPlayerStateChange"]}', '*');
             };
-            
-            // Analytics event
-            if (window.va) {
-                window.va('track', 'PlayVideo', { 
-                    videoId: videoData.id, 
-                    title: videoData.title,
-                    artist: videoData.artist,
-                    composer: videoData.composer
-                });
-            }
         } catch (error) {
             console.error('Error opening player:', error);
             alert('Failed to play video. Please try again.');
         }
     }
 
-    // YouTube player state change handler
     window.onPlayerStateChange = async function(event) {
-        // When video ends (state = 0)
         if (event.data === 0 && autoplayEnabled && currentVideoId) {
-            // First try similar songs
             const similarSongs = await findSimilarSongs(currentVideoId);
             
             if (similarSongs && similarSongs.length > 0) {
-                // Sort by most recently played
                 similarSongs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
-                // Play the most recent similar song
                 const nextVideo = similarSongs[0];
                 openFloatingPlayer(nextVideo);
-                
-                // Notification
                 showNotification(`Now playing: ${nextVideo.title} by ${nextVideo.artist}`);
             } else if (historyAutoplayEnabled) {
-                // If no similar songs and history autoplay is enabled, play next from history
                 const nextVideo = getNextHistoryVideo(currentVideoId);
                 if (nextVideo) {
                     openFloatingPlayer(nextVideo);
@@ -943,7 +761,6 @@
         }
     };
 
-    // Show notification
     function showNotification(message) {
         if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('Orpheus Music Player', { body: message });
@@ -956,13 +773,12 @@
         }
     }
 
-    // Close floating player
     function closeFloatingPlayer() {
         if (historyAutoplayEnabled) {
             const nextVideo = getNextHistoryVideo(currentVideoId);
             if (nextVideo) {
                 openFloatingPlayer(nextVideo);
-                return; // Don't close if we're playing next video
+                return;
             }
         }
         
@@ -972,48 +788,32 @@
         currentVideoId = null;
     }
 
-    // Save to playback history
     function saveToPlaybackHistory(videoData) {
         const history = getPlaybackHistory();
-        
-        // Remove if already exists (to avoid duplicates)
         const existingIndex = history.findIndex(v => v.id === videoData.id);
         if (existingIndex >= 0) {
             history.splice(existingIndex, 1);
         }
         
-        // Add new video to beginning of array
         history.unshift(videoData);
-        
-        // Keep only the last 50 items
         const limitedHistory = history.slice(0, 50);
-        
         localStorage.setItem('playbackHistory', JSON.stringify(limitedHistory));
-        
-        // Update the displayed history
         displayPlaybackHistory();
     }
 
-    // Get playback history
     function getPlaybackHistory() {
         const history = localStorage.getItem('playbackHistory');
         return history ? JSON.parse(history) : [];
     }
 
-    // Clear playback history
     function clearPlaybackHistory() {
         if (confirm("Are you sure you want to clear your playback history?")) {
             localStorage.removeItem('playbackHistory');
             document.querySelector("#history-videos .video-list").innerHTML = 
                 '<p>Your playback history is empty.</p>';
-                
-            if (window.va) {
-                window.va('track', 'ClearHistory');
-            }
         }
     }
 
-    // Display playback history
     async function displayPlaybackHistory() {
         const history = getPlaybackHistory();
         const videoList = document.querySelector("#history-videos .video-list");
@@ -1028,7 +828,6 @@
             return;
         }
         
-        // Process history in chunks
         const chunkSize = 5;
         for (let i = 0; i < history.length; i += chunkSize) {
             const chunk = history.slice(i, i + chunkSize);
@@ -1045,8 +844,7 @@
                     videoData.title,
                     videoData.thumbnail,
                     new Date(videoData.timestamp).toLocaleString(),
-                    videoData.artist,
-                    videoData.composer
+                    videoData.artist
                 );
                 
                 videoList.appendChild(videoElement);
@@ -1058,7 +856,6 @@
         loadingElement.style.display = "none";
     }
 
-    // Initialize draggable player
     function initDraggablePlayer() {
         const floatingPlayer = document.getElementById("floating-player");
         let isDragging = false;
@@ -1093,16 +890,10 @@
         document.addEventListener("mouseup", (e) => {
             if (!isDragging) return;
             
-            const dist = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
-            if (dist < 5) {
-                // Click behavior could be added here
-            }
-            
             isDragging = false;
             floatingPlayer.classList.remove("active");
         });
 
-        // Touch support
         floatingPlayer.addEventListener("touchstart", (e) => {
             if (e.target === floatingPlayer || e.target.id === "player-controls" || e.target.id === "player-title") {
                 isDragging = true;
@@ -1138,7 +929,6 @@
         });
     }
 
-    // Fetch playlist videos
     function fetchPlaylistVideos(playlistId, containerId) {
         const API_URL = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=10&key=${API_KEY}`;
         
@@ -1183,7 +973,6 @@
             });
     }
 
-    // Get best thumbnail
     function getBestThumbnail(thumbnails) {
         return thumbnails?.medium?.url || 
                thumbnails?.high?.url ||
@@ -1191,7 +980,6 @@
                'https://i.ytimg.com/vi/default.jpg';
     }
 
-    // Search YouTube
     function searchYouTube() {
         const query = document.getElementById("search-query").value.trim();
         if (!query) {
@@ -1244,6 +1032,5 @@
             });
     }
 </script>
-
 </body>
 </html>
