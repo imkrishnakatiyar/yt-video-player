@@ -1,158 +1,450 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head> 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orpheus Music Player</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8710947218183957"
+     crossorigin="anonymous"></script>
     <style>
         :root {
-            --primary-color: #1db954; /* Spotify green */
-            --background-color: #121212;
-            --card-color: #181818;
+            --primary-color: #FFFFFF;
+            --background-color: #000000;
+            --card-color: #1e1e1e;
             --text-color: #ffffff;
-            --subtext-color: #b3b3b3;
             --danger-color: #ff4444;
         }
-
+        
         body {
-            font-family: 'Circular Std', 'Arial', sans-serif;
+            font-family: 'Arial', sans-serif;
             background-color: var(--background-color);
             color: var(--text-color);
             margin: 0;
             padding: 0;
         }
 
-        h1 {
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--text-color);
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
             padding: 20px;
         }
 
+        h1 {
+            text-align: left;
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
         .search-bar {
+            margin-bottom: 20px;
             display: flex;
             gap: 10px;
-            padding: 0 20px 20px 20px;
         }
 
         .search-bar input {
             flex: 1;
-            background-color: #282828;
-            color: var(--text-color);
-            border-radius: 500px;
-            padding: 12px 20px;
+            padding: 12px;
+            border-radius: 25px;
             border: none;
-            outline: none;
+            background-color: #2a2a2a;
+            color: white;
+            font-size: 16px;
+        }
+
+        .search-bar input:focus {
+            outline: 2px solid var(--primary-color);
         }
 
         .search-bar button {
-            background-color: var(--primary-color);
-            color: var(--text-color);
-            border-radius: 500px;
-            font-weight: 700;
             padding: 12px 20px;
+            background-color: var(--primary-color);
             border: none;
+            border-radius: 25px;
+            color: #1ed760;
             cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, background-color 0.2s;
         }
 
         .search-bar button:hover {
             background-color: #1ed760;
+            transform: scale(1.05);
+        }
+
+        .search-bar button:active {
+            transform: scale(0.98);
+        }
+
+        .category {
+            margin-top: 30px;
+        }
+
+        .category h2 {
+            font-size: 22px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .video-list {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 15px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) var(--background-color);
+        }
+
+        .video-list::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .video-list::-webkit-scrollbar-track {
+            background: var(--background-color);
+            border-radius: 10px;
+        }
+
+        .video-list::-webkit-scrollbar-thumb {
+            background-color: var(--primary-color);
+            border-radius: 10px;
         }
 
         .video {
-            background-color: var(--card-color);
-            border-radius: 8px;
+            background: var(--card-color);
             padding: 15px;
-            margin: 10px;
-            transition: transform 0.2s ease, background-color 0.2s ease;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            flex: 0 0 auto;
+            width: 280px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .video:hover {
-            transform: scale(1.05);
-            background-color: #282828;
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
         }
 
         .video h3 {
+            margin: 10px 0;
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 160px;
+            border-radius: 8px;
+            object-fit: cover;
+            background-color: #333;
+            transition: opacity 0.2s;
+        }
+
+        .video:hover .video-thumbnail {
+            opacity: 0.9;
+        }
+
+        /* Artist/Composer styles */
+        .artist, .composer {
+            margin: 5px 0;
             font-size: 14px;
-            font-weight: 600;
-            color: var(--text-color);
+            color: #aaa;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .artist {
-            font-size: 12px;
-            color: var(--subtext-color);
+            color: var(--primary-color);
         }
 
-        .timestamp {
-            font-size: 11px;
-            color: var(--subtext-color);
-        }
-
-        /* Floating Player */
+        /* Floating Draggable Video Player */
         #floating-player {
-            background: #181818;
-            border-radius: 8px;
-            padding: 15px;
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 300px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            width: 320px;
+            background: #000;
+            border-radius: 10px;
+            display: none;
+            cursor: grab;
+            z-index: 1000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.7);
+            transition: transform 0.2s;
+            user-select: none;
+        }
+
+        #floating-player:hover {
+            transform: scale(1.02);
+        }
+
+        #floating-player.active {
+            cursor: grabbing;
+        }
+
+        #floating-video {
+            width: 100%;
+            height: 180px;
+            border-radius: 10px 10px 0 0;
+            border: none;
         }
 
         #player-controls {
-            background-color: #282828;
-            border-radius: 0 0 8px 8px;
             padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #000;
+            border-radius: 0 0 10px 10px;
         }
 
-        #autoplay-toggle, 
-        #history-autoplay-toggle {
-            background-color: #282828;
-            color: var(--text-color);
-            border-radius: 500px;
-            padding: 8px 12px;
+        #player-title {
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            padding: 0 10px;
+        }
+
+        #close-player {
+            background: var(--danger-color);
+            color: white;
             border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
             cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        #close-player:hover {
+            background-color: #ff6666;
+        }
+
+        #autoplay-toggle, #history-autoplay-toggle {
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 5px 10px;
+            margin-right: 10px;
+            cursor: pointer;
+            font-size: 12px;
         }
 
         .clear-history {
-            background-color: var(--danger-color);
-            color: var(--text-color);
-            border-radius: 500px;
-            padding: 8px 12px;
+            background: var(--danger-color);
+            color: white;
             border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
             cursor: pointer;
+            margin-left: 10px;
+            font-size: 12px;
+            transition: background-color 0.2s;
         }
 
         .clear-history:hover {
             background-color: #ff6666;
         }
+
+        .timestamp {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-container {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                max-width: 95%;
+                padding: 10px;
+            }
+            
+            .video {
+                width: 220px;
+            }
+            
+            .video-thumbnail {
+                height: 120px;
+            }
+            
+            #floating-player {
+                width: 280px;
+            }
+            
+            #floating-video {
+                height: 160px;
+            }
+            
+            #autoplay-toggle, #history-autoplay-toggle {
+                padding: 3px 6px;
+                font-size: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .search-bar {
+                flex-direction: column;
+            }
+            
+            .video {
+                width: 180px;
+            }
+            
+            #floating-player {
+                width: 90%;
+                right: 5%;
+                bottom: 10px;
+            }
+            
+            #player-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            #autoplay-toggle, #history-autoplay-toggle {
+                margin: 2px;
+                font-size: 9px;
+            }
+            
+            #player-title {
+                order: -1;
+                width: 100%;
+                text-align: center;
+                margin-bottom: 5px;
+            }
+        }
+
+        .exit-container {
+          text-align: center;
+        }
+
+        .exit-button {
+          display: inline-block;
+          padding: 12px 24px;
+          font-size: 16px;
+          font-weight: bold;
+          color: #fff;
+          background-color: #e74c3c;
+          border: none;
+          border-radius: 8px;
+          text-decoration: none;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .exit-button:hover {
+          background-color: #c0392b;
+          transform: scale(1.05);
+        }
     </style>
+    <script type='text/javascript' src='//pl27008680.profitableratecpm.com/b4/4c/ce/b44ccec2ff1efce6229b6f7b7c6c9b19.js'></script>
 </head>
 <body>
-    <h1>Orpheus Music Player</h1>
+
+<div class="container">
+    <h1>Orpheus Music</h1>
+    <a href="index1.html" style="color: var(--primary-color); text-decoration: none;">← Switch to old version</a>
+    <a href="install.html" style="color: var(--primary-color); text-decoration: none;">   install app →</a>
+ 
+
+  <div class="exit-container">
+    <a href="https://www.profitableratecpm.com/n74sudqr?key=0a761360211e9d54e247272a6c2f275f" class="exit-button">Exit</a>
+  </div>
 
     <div class="search-bar">
-        <input type="text" placeholder="Search music...">
-        <button>Search</button>
+        <input type="text" id="search-query" placeholder="Search for music videos..." autocomplete="on">
+        <button onclick="searchYouTube()">Search</button>
     </div>
 
-    <div class="video">
-        <h3>Song Title</h3>
-        <div class="artist">Artist Name</div>
-        <div class="timestamp">3:45</div>
-    </div>
-
-    <div id="floating-player">
-        <p>Now Playing: Song Title</p>
-        <div id="player-controls">
-            <button id="autoplay-toggle">Autoplay</button>
-            <button id="history-autoplay-toggle">History Autoplay</button>
-            <button class="clear-history">Clear History</button>
+    <div id="search-results" class="category" style="display:none;">
+        <h2>Search Results</h2>
+        <div class="video-list"></div>
+        <div id="search-loading" class="loading-container" style="display:none;">
+            <div class="loading"></div>
         </div>
     </div>
-    <script>
+
+    <div id="history-videos" class="category">
+        <h2>Recently Played 
+            <button class="clear-history" onclick="clearPlaybackHistory()">Clear History</button>
+        </h2>
+        <div class="video-list"></div>
+        <div id="history-loading" class="loading-container" style="display:none;">
+            <div class="loading"></div>
+        </div>
+    </div>
+    <div id="hindi-videos" class="category">
+        <h2>Trending Hindi Music</h2>
+        <div class="video-list"></div>
+        <div id="hindi-loading" class="loading-container">
+            <div class="loading"></div>
+        </div>
+    </div>
+<script async="async" data-cfasync="false" src="//pl26903411.profitableratecpm.com/266a0fc63b4b065aec80fab56cbb1463/invoke.js"></script>
+<div id="container-266a0fc63b4b065aec80fab56cbb1463"></div>
+    <div id="english-videos" class="category">
+        <h2>Trending English Music</h2>
+        <div class="video-list"></div>
+        <div id="english-loading" class="loading-container">
+            <div class="loading"></div>
+        </div>
+    </div>
+<script async="async" data-cfasync="false" src="//pl26903411.profitableratecpm.com/266a0fc63b4b065aec80fab56cbb1463/invoke.js"></script>
+<div id="container-266a0fc63b4b065aec80fab56cbb1463"></div>
+    <div id="punjabi-videos" class="category">
+        <h2>Trending Punjabi Music</h2>
+        <div class="video-list"></div>
+        <div id="punjabi-loading" class="loading-container">
+            <div class="loading"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Draggable Video Player -->
+<div id="floating-player">
+    <iframe id="floating-video" allowfullscreen></iframe>
+    <div id="player-controls">
+        <button id="autoplay-toggle" title="Toggle autoplay of similar songs">Autoplay: ON</button>
+        <button id="history-autoplay-toggle" title="Toggle history autoplay">History Autoplay: ON</button>
+        <div id="player-title">No video playing</div>
+        <button id="close-player" title="Close player">×</button>
+    </div>
+</div>
+
+<script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -952,5 +1244,6 @@
             });
     }
 </script>
+
 </body>
 </html>
