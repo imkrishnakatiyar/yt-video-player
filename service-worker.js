@@ -1,37 +1,44 @@
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open('orpheus-video-cache-v27').then((cache) => {
-            return cache.addAll([
-                '/',
-                '/index.html',
-                '/css/style.css',
-                '/js/script.js',
-                '/manifest.json',
-                '/service-worker.js',
-                '/install.html',
-            ]);
-        })
-    );
+const CACHE_NAME = 'orpheus-music-cache-v1';
+const urlsToCache = [
+  '/',
+  '/index.html',
+  '/css/style.css',
+  '/js/script.js',
+  '/manifest.json'
+];
+
+// Install the service worker
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        return cache.addAll(urlsToCache);
+      })
+  );
 });
 
-self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
-        })
-    );
+// Serve cached content when offline
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        // Return cached version or fetch from network
+        return response || fetch(event.request);
+      })
+  );
 });
 
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cache) => {
-                    if (cache !== 'orpheus-video-cache-v25') {
-                        return caches.delete(cache);
-                    }
-                })
-            );
+// Clean up old caches
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
         })
-    );
+      );
+    })
+  );
 });
