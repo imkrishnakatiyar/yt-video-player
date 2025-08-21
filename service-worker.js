@@ -1,6 +1,6 @@
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open('orpheus-video-cache-v25').then((cache) => {
+        caches.open('orpheus-video-cache-v26').then((cache) => {
             return cache.addAll([
                 '/',
                 '/index.html',
